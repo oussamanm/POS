@@ -6,6 +6,7 @@ use App\Mail\ReturnMail;
 use App\Models\Client;
 use App\Models\Unit;
 use App\Models\PaymentSaleReturns;
+use App\Models\PaymentSale;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\product_warehouse;
@@ -256,27 +257,30 @@ class SalesReturnController extends BaseController
         ]);
 
         \DB::transaction(function () use ($request) {
-            $order = new SaleReturn;
+            $sale_return = new SaleReturn;
 
-            $order->date = $request->date;
-            $order->Ref = $this->getNumberOrder();
-            $order->client_id = $request->client_id;
-            $order->sale_id = $request->sale_id;
-            $order->warehouse_id = $request->warehouse_id;
-            $order->tax_rate = $request->tax_rate;
-            $order->TaxNet = $request->TaxNet;
-            $order->discount = $request->discount;
-            $order->shipping = $request->shipping;
-            $order->GrandTotal = $request->GrandTotal;
-            $order->statut = $request->statut;
-            $order->payment_statut = 'unpaid';
-            $order->notes = $request->notes;
-            $order->user_id = Auth::user()->id;
+            $sale_return->date = $request->date;
+            $sale_return->Ref = $this->getNumberOrder();
+            $sale_return->client_id = $request->client_id;
+            $sale_return->sale_id = $request->sale_id;
+            $sale_return->warehouse_id = $request->warehouse_id;
+            $sale_return->tax_rate = $request->tax_rate;
+            $sale_return->TaxNet = $request->TaxNet;
+            $sale_return->discount = $request->discount;
+            $sale_return->shipping = $request->shipping;
+            $sale_return->GrandTotal = $request->GrandTotal;
+            $sale_return->statut = $request->statut;
+            $sale_return->payment_statut = 'paid';
+            $sale_return->notes = $request->notes;
+            $sale_return->user_id = Auth::user()->id;
 
-            $order->save();
+            if ($sale_return->payment_statut === "paid")
+                $sale_return->paid_amount = $request->GrandTotal;
+
+            $sale_return->save();
 
             $data = $request['details'];
-            // dd($data);
+
             foreach ($data as $key => $value)
             {
                 if(isset($value['sale_unit_id']))
@@ -292,7 +296,7 @@ class SalesReturnController extends BaseController
                     $value['imei_number'] = "";
 
                 $orderDetails[] = [
-                    'sale_return_id' => $order->id,
+                    'sale_return_id' => $sale_return->id,
                     'quantity' => $value['quantity'],
                     'price' => $value['Unit_price'],
                     'sale_unit_id' =>  $unit->id,
@@ -306,11 +310,11 @@ class SalesReturnController extends BaseController
                     'imei_number' => $value['imei_number'],
                 ];
 
-                if ($order->statut == "received")
+                if ($sale_return->statut == "received")
                 {
                     if ($value['product_variant_id'] !== null) {
                         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $order->warehouse_id)
+                            ->where('warehouse_id', $sale_return->warehouse_id)
                             ->where('product_id', $value['product_id'])
                             ->where('product_variant_id', $value['product_variant_id'])
                             ->first();
@@ -327,7 +331,7 @@ class SalesReturnController extends BaseController
 
                     } else {
                         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $order->warehouse_id)
+                            ->where('warehouse_id', $sale_return->warehouse_id)
                             ->where('product_id', $value['product_id'])
                             ->first();
 
@@ -345,6 +349,19 @@ class SalesReturnController extends BaseController
 
             }
             SaleReturnDetails::insert($orderDetails);
+
+            // add new record in Sale Payment with - amount
+            PaymentSale::create([
+                'sale_id'   => null,
+                'Ref'       => null,
+                'date'      => Carbon::now(),
+                'Reglement' => "RETURN",
+                'montant'   => $sale_return->GrandTotal,
+                'change'    => 0,
+                'notes'     => "RETURN",
+                'user_id'   => Auth::user()->id,
+            ]);
+
         }, 10);
 
         return response()->json(['success' => true]);
@@ -371,60 +388,62 @@ class SalesReturnController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'create', SaleReturn::class);
 
-
         request()->validate([
             'client_id' => 'required',
             'warehouse_id' => 'required',
         ]);
 
         $rtn = \DB::transaction(function () use ($request) {
-            $order = new SaleReturn;
+            $sale_return = new SaleReturn;
             $current_user_id =  Auth::user()->id;
 
-            $order->date = $request->date;
-            $order->client_id = $request->client_id;
-            $order->sale_id = $request->sale_id;
-            $order->warehouse_id = $request->warehouse_id;
-            $order->GrandTotal = $request->GrandTotal;
-            $order->notes = $request->notes;
-            $order->payment_statut = $request->payment_statut;
+            $sale_return->date = $request->date;
+            $sale_return->client_id = $request->client_id;
+            $sale_return->sale_id = $request->sale_id;
+            $sale_return->warehouse_id = $request->warehouse_id;
+            $sale_return->GrandTotal = $request->GrandTotal;
+            $sale_return->notes = $request->notes;
+            $sale_return->payment_statut = "paid";
 
-            if ($order->payment_statut === "paid")
-                $order->paid_amount = $request->GrandTotal;
+            if ($sale_return->payment_statut === "paid")
+                $sale_return->paid_amount = $request->GrandTotal;
 
-            $order->tax_rate = 0;
-            $order->TaxNet = 0;
-            $order->discount = 0;
-            $order->shipping = 0;
-            $order->statut = "received";
-            $order->Ref = $this->getNumberOrder();
-            $order->user_id = $current_user_id;
+            $sale_return->tax_rate = 0;
+            $sale_return->TaxNet = 0;
+            $sale_return->discount = 0;
+            $sale_return->shipping = 0;
+            $sale_return->statut = "received";
+            $sale_return->Ref = $this->getNumberOrder();
+            $sale_return->user_id = $current_user_id;
 
-            $rtn_save = $order->save();
+            $rtn_save = $sale_return->save();
 
             /// check if Paid and add Payment return
             if (isset($request->payment_statut) && $request->payment_statut === "paid")
             {
-                PaymentSaleReturns::create([
-                    'sale_return_id' => $order->id,
-                    'Ref' => $this->getNumberOrderPayment(),
-                    'date' => $request->date,
-                    'Reglement' => $request->typeReg,
-                    'montant' => $request->GrandTotal,
-                    'change' => 0,
-                    'notes' => "",
-                    'user_id' => $current_user_id,
+                PaymentSale::create([
+                    'sale_id'   => null,
+                    'Ref'       => null,
+                    'date'      => Carbon::now(),
+                    'Reglement' => "RETURN",
+                    'montant'   => $sale_return->GrandTotal,
+                    'change'    => 0,
+                    'notes'     => "RETURN-APP",
+                    'user_id'   => $current_user_id,
                 ]);
             }
 
+            // Fill Details
             $data = $request['details'];
-            // dd($data);
+            $orderDetails = [];
+
             foreach ($data as $key => $value)
             {
                 if(isset($value['sale_unit_id']))
                     $unit = Unit::where('id', $value['sale_unit_id'])->first();
                 else
                     $unit = Unit::where('ShortName', $value['unitPurchase'])->first();
+
                 if(empty($value['Unit_price']))
                     $value['Unit_price'] = $value['price'];
                 if(empty($value['product_variant_id']))
@@ -433,7 +452,7 @@ class SalesReturnController extends BaseController
                     $value['imei_number'] = "";
 
                 $orderDetails[] = [
-                    'sale_return_id' => $order->id,
+                    'sale_return_id' => $sale_return->id,
                     'quantity' => $value['quantity'],
                     'price' => $value['Unit_price'],
                     'sale_unit_id' =>  $unit->id,
@@ -447,49 +466,30 @@ class SalesReturnController extends BaseController
                     'imei_number' => $value['imei_number'],
                 ];
 
-                if ($order->statut == "received")
+                if ($sale_return->statut == "received")
                 {
-                    if ($value['product_variant_id'] !== null)
+                    $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                        ->where('warehouse_id', $sale_return->warehouse_id)
+                        ->where('product_id', $value['product_id'])
+                        ->when(($value['product_variant_id'] !== null), function ($query) use ($value) {
+                            return $query->where('product_variant_id', $value['product_variant_id']);
+                        })
+                        ->first();
+
+                    if ($unit && $product_warehouse)
                     {
-                        $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $order->warehouse_id)
-                            ->where('product_id', $value['product_id'])
-                            ->where('product_variant_id', $value['product_variant_id'])
-                            ->first();
-
-                        if ($unit && $product_warehouse) {
-                            if ($unit->operator == '/') {
-                                $product_warehouse->qte += $value['quantity'] / $unit->operator_value;
-                            } else {
-                                $product_warehouse->qte += $value['quantity'] * $unit->operator_value;
-                            }
-
-                            $product_warehouse->save();
-                        }
-
-                    } else {
-                        $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $order->warehouse_id)
-                            ->where('product_id', $value['product_id'])
-                            ->first();
-
-                        if ($unit && $product_warehouse) {
-                            if ($unit->operator == '/') {
-                                $product_warehouse->qte += $value['quantity'] / $unit->operator_value;
-                            } else {
-                                $product_warehouse->qte += $value['quantity'] * $unit->operator_value;
-                            }
-
-                            $product_warehouse->save();
-                        }
+                        if ($unit->operator == '/')
+                            $product_warehouse->qte += $value['quantity'] / $unit->operator_value;
+                        else
+                            $product_warehouse->qte += $value['quantity'] * $unit->operator_value;
+                        $product_warehouse->save();
                     }
                 }
-
             }
             SaleReturnDetails::insert($orderDetails);
 
-            return $order;
-        }, 10);
+            return $sale_return;
+        }, 5);
 
         return response()->json(['success' => true, 'return' => $rtn]);
     }

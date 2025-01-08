@@ -48,7 +48,7 @@
                   </validation-provider>
                 </b-col>
                  <!-- Status  -->
-                <b-col lg="4" md="4" sm="12" class="mb-3">
+                <!-- <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Status" :rules="{ required: true}">
                     <b-form-group slot-scope="{ valid, errors }" :label="$t('Status') + ' ' + '*'">
                       <v-select
@@ -66,7 +66,7 @@
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
-                </b-col>
+                </b-col> -->
                 <!-- warehouse -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="warehouse" :rules="{ required: true}">
@@ -376,8 +376,6 @@ export default {
 
     //-----------------------------------Verified QTY ------------------------------\\
     Verified_Qty(detail, id) {
-
-
         // Added by oussama
 
         if (detail.quantity <= 0) {
@@ -573,14 +571,12 @@ export default {
       this.product.detail_id = this.details[len - 1].detail_id + 1;
     },
     add_Detail() {
-      if (this.details.length > 0) {
+      if (this.details.length > 0)
         this.Last_Detail_id();
-      } else if (this.details.length === 0) {
+      else if (this.details.length === 0)
         this.product.detail_id = 1;
-      }
 
       this.details.push(this.product);
-      console.log(this.details)
     },
     Get_Product_Details(product_id) {
       axios.get("/show_product_data/" + product_id +"/null").then(response => {

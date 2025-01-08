@@ -17,7 +17,7 @@
         placeholder: $t('Search_this_table'),
         enabled: true,
       }"
-        :select-options="{ 
+        :select-options="{
           enabled: true ,
           clearSelectionText: '',
         }"
@@ -51,7 +51,7 @@
               >
               <i class="i-File-Excel"></i> EXCEL
           </vue-excel-xlsx>
-         
+
         </div>
 
         <template slot="table-row" slot-scope="props">
@@ -77,39 +77,23 @@
                   </b-dropdown-item>
                 </b-navbar-nav>
 
-                <b-dropdown-item
+                <!-- <b-dropdown-item
                   title="Edit"
                   v-if="props.row.sale_id != null && currentUserPermissions.includes('Sale_Returns_edit')"
                   :to="'/app/sale_return/edit/'+props.row.id+'/'+props.row.sale_id"
                 >
                   <i class="nav-icon i-Pen-2 font-weight-bold mr-2"></i>
                   {{$t('EditReturn')}}
-                </b-dropdown-item>
-                
-                <b-dropdown-item
+                </b-dropdown-item> -->
+
+                <!-- <b-dropdown-item
                   title="Edit"
                   v-if="props.row.sale_id == null && currentUserPermissions.includes('Sale_Returns_edit')"
                   :to="'/app/sale_return/edit/'+props.row.id"
                 >
                   <i class="nav-icon i-Pen-2 font-weight-bold mr-2"></i>
                   {{$t('EditReturn')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  v-if="currentUserPermissions.includes('payment_returns_view')"
-                  @click="Show_Payments(props.row.id , props.row)"
-                >
-                  <i class="nav-icon i-Money-Bag font-weight-bold mr-2"></i>
-                  {{$t('ShowPayment')}}
-                </b-dropdown-item>
-
-                <b-dropdown-item
-                  v-if="currentUserPermissions.includes('payment_returns_add')"
-                  @click="New_Payment(props.row)"
-                >
-                  <i class="nav-icon i-Add font-weight-bold mr-2"></i>
-                  {{$t('AddPayment')}}
-                </b-dropdown-item>
+                </b-dropdown-item> -->
 
                 <b-dropdown-item title="PDF" @click="Return_PDF(props.row , props.row.id)">
                   <i class="nav-icon i-File-TXT font-weight-bold mr-2"></i>
@@ -133,18 +117,6 @@
               class="badge badge-outline-success"
             >{{$t('Received')}}</span>
             <span v-else class="badge badge-outline-info">{{$t('Pending')}}</span>
-          </div>
-
-          <div v-else-if="props.column.field == 'payment_status'">
-            <span
-              v-if="props.row.payment_status == 'paid'"
-              class="badge badge-outline-success"
-            >{{$t('Paid')}}</span>
-            <span
-              v-else-if="props.row.payment_status == 'partial'"
-              class="badge badge-outline-primary"
-            >{{$t('partial')}}</span>
-            <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
           </div>
            <div v-else-if="props.column.field == 'Ref'">
             <router-link
@@ -235,23 +207,6 @@
             </b-form-group>
           </b-col>
 
-          <!-- Payment Status  -->
-          <b-col md="12">
-            <b-form-group :label="$t('PaymentStatus')">
-              <v-select
-                v-model="Filter_Payment"
-                :reduce="label => label.value"
-                :placeholder="$t('Choose_Status')"
-                :options="
-                      [
-                        {label: $t('Paid'), value: 'paid'},
-                        {label: $t('partial'), value: 'partial'},
-                        {label: $t('Unpaid'), value: 'unpaid'},
-                      ]"
-              ></v-select>
-            </b-form-group>
-          </b-col>
-
           <b-col md="6" sm="12">
             <b-button
               @click="GET_Sales_Return(serverParams.page)"
@@ -271,209 +226,6 @@
         </b-row>
       </div>
     </b-sidebar>
-
-    <!-- Modal Show Payments-->
-    <b-modal hide-footer size="lg" id="Show_payment" :title="$t('ShowPayment')">
-      <b-row>
-        <b-col lg="12" md="12" sm="12" class="mt-3">
-          <div class="table-responsive">
-            <table class="table table-hover table-bordered table-md">
-              <thead>
-                <tr>
-                  <th scope="col">{{$t('date')}}</th>
-                  <th scope="col">{{$t('Reference')}}</th>
-                  <th scope="col">{{$t('Amount')}}</th>
-                  <th scope="col">{{$t('PayeBy')}}</th>
-                  <th scope="col">{{$t('Action')}}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="factures.length <= 0">
-                  <td colspan="5">{{$t('NodataAvailable')}}</td>
-                </tr>
-                <tr v-for="facture in factures">
-                  <td>{{facture.date}}</td>
-                  <td>{{facture.Ref}}</td>
-                  <td>{{currentUser.currency}} {{formatNumber((facture.montant),2)}}</td>
-                  <td>{{facture.Reglement}}</td>
-                  <td>
-                    <div role="group" aria-label="Basic example" class="btn-group">
-                      <span
-                        title="Print"
-                        class="btn btn-icon btn-info btn-sm"
-                        @click="Payment_Return_PDF(facture,facture.id)"
-                      >
-                        <i class="i-Billing"></i>
-                      </span>
-                      <span
-                        v-if="currentUserPermissions.includes('payment_returns_edit')"
-                        title="Edit"
-                        class="btn btn-icon btn-success btn-sm"
-                        @click="Edit_Payment(facture)"
-                      >
-                        <i class="i-Pen-2"></i>
-                      </span>
-                     
-                      <span
-                        v-if="currentUserPermissions.includes('payment_returns_delete')"
-                        title="Delete"
-                        class="btn btn-icon btn-danger btn-sm"
-                        @click="Remove_Payment(facture.id)"
-                      >
-                        <i class="i-Close"></i>
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </b-col>
-      </b-row>
-    </b-modal>
-
-    <!-- Modal Add Payment-->
-    <validation-observer ref="Add_payment">
-      <b-modal
-        hide-footer
-        size="lg"
-        id="Add_Payment"
-        :title="EditPaiementMode?$t('EditPayment'):$t('AddPayment')"
-      >
-        <b-form @submit.prevent="Submit_Payment">
-          <b-row>
-            <!-- date -->
-            <b-col lg="4" md="12" sm="12">
-              <validation-provider
-                name="date"
-                :rules="{ required: true}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('date')">
-                  <b-form-input
-                    label="date"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="date-feedback"
-                    v-model="facture.date"
-                    type="date"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="date-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- Reference  -->
-            <b-col lg="4" md="12" sm="12">
-              <b-form-group :label="$t('Reference')">
-                <b-form-input
-                  disabled="disabled"
-                  label="Reference"
-                  :placeholder="$t('Reference')"
-                  v-model="facture.Ref"
-                ></b-form-input>
-              </b-form-group>
-            </b-col>
-
-            <!-- Payment choice -->
-            <b-col lg="4" md="12" sm="12">
-              <validation-provider name="Payment choice" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice')">
-                  <v-select
-                    :class="{'is-invalid': !!errors.length}"
-                    :state="errors[0] ? false : (valid ? true : null)"
-                    v-model="facture.Reglement"
-                    @input="Selected_PaymentMethod"
-                    :reduce="label => label.value"
-                    :placeholder="$t('PleaseSelect')"
-                    :options="
-                          [
-                          {label: $t('Cash'), value: 'Cash'},
-                          {label: $t('Credit_card'), value: 'credit card'},
-                          {label: 'TPE', value: 'tpe'},
-                          {label: $t('Cheque'), value: 'cheque'},
-                          {label: 'Western Union', value: 'Western Union'},
-                          {label: $t('Bank_transfer'), value: 'bank transfer'},
-                          {label: $t('Other'), value: 'other'},
-                          ]"
-                  ></v-select>
-                  <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-              <!-- Received  Amount  -->
-            <b-col lg="4" md="12" sm="12">
-              <validation-provider
-                name="Received Amount"
-                :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                v-slot="validationContext"
-              >
-              <b-form-group :label="$t('Received_Amount')">
-                <b-form-input
-                  @keyup="Verified_Received_Amount(facture.received_amount)"
-                  label="Received_Amount"
-                  :placeholder="$t('Received_Amount')"
-                  v-model.number="facture.received_amount"
-                  :state="getValidationState(validationContext)"
-                  aria-describedby="Received_Amount-feedback"
-                ></b-form-input>
-                <b-form-invalid-feedback
-                  id="Received_Amount-feedback"
-                >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-              </b-form-group>
-            </validation-provider>
-          </b-col>
-
-            <!-- Paying Amount  -->
-            <b-col lg="4" md="12" sm="12">
-              <validation-provider
-                name="Amount"
-                :rules="{ required: true , regex: /^\d*\.?\d*$/}"
-                v-slot="validationContext"
-              >
-                <b-form-group :label="$t('Paying_Amount')">
-                  <b-form-input
-                   @keyup="Verified_paidAmount(facture.montant)"
-                    label="Amount"
-                    :placeholder="$t('Paying_Amount')"
-                    v-model.number="facture.montant"
-                    :state="getValidationState(validationContext)"
-                    aria-describedby="Amount-feedback"
-                  ></b-form-input>
-                  <b-form-invalid-feedback id="Amount-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
-            </b-col>
-
-            <!-- change Amount  -->
-            <b-col lg="4" md="12" sm="12">
-              <label>{{$t('Change')}} :</label>
-              <p
-                class="change_amount"
-              >{{parseFloat(facture.received_amount - facture.montant).toFixed(2)}}</p>
-            </b-col>
-
-            <!-- Note -->
-            <b-col lg="12" md="12" sm="12" class="mt-3">
-              <b-form-group :label="$t('Note')">
-                <b-form-textarea id="textarea" v-model="facture.notes" rows="3" max-rows="6"></b-form-textarea>
-              </b-form-group>
-            </b-col>
-
-            <b-col md="12" class="mt-3">
-              <b-button
-                variant="primary"
-                type="submit"
-                :disabled="paymentProcessing"
-              ><i class="i-Yes me-2 font-weight-bold"></i> {{$t('submit')}}</b-button>
-              <div v-once class="typo__p" v-if="paymentProcessing">
-                <div class="spinner sm spinner-primary mt-3"></div>
-              </div>
-            </b-col>
-          </b-row>
-        </b-form>
-      </b-modal>
-    </validation-observer>
   </div>
 
 </template>
@@ -510,7 +262,6 @@ export default {
       Filter_Client: "",
       Filter_sale:"",
       Filter_status: "",
-      Filter_Payment: "",
       Filter_Ref: "",
       Filter_date: "",
       Filter_warehouse: "",
@@ -534,7 +285,7 @@ export default {
         Reglement: "",
         notes: ""
       },
-     
+
     };
   },
 
@@ -585,25 +336,6 @@ export default {
         {
           label: this.$t("Total"),
           field: "GrandTotal",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Paid"),
-          field: "paid_amount",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("Due"),
-          field: "due",
-          tdClass: "text-left",
-          thClass: "text-left"
-        },
-        {
-          label: this.$t("PaymentStatus"),
-          field: "payment_status",
-          html: true,
           tdClass: "text-left",
           thClass: "text-left"
         },
@@ -679,37 +411,8 @@ export default {
       this.GET_Sales_Return(this.serverParams.page);
     },
 
-    //------ Validate Form Submit_Payment
-    Submit_Payment() {
-      this.$refs.Add_payment.validate().then(success => {
-        if (!success) {
-          return;
-        } else if (this.facture.montant > this.facture.received_amount) {
-          this.makeToast(
-            "warning",
-            this.$t("Paying_amount_is_greater_than_Received_amount"),
-            this.$t("Warning")
-          );
-          this.facture.received_amount = 0;
-        }
-        else if (this.facture.montant > this.due) {
-          this.makeToast(
-            "warning",
-            this.$t("Paying_amount_is_greater_than_Grand_Total"),
-            this.$t("Warning")
-          );
-          this.facture.montant = 0;
 
-        }else if (!this.EditPaiementMode) {
-            this.Create_Payment();
-        } else {
-            this.Update_Payment();
-        }
-
-      });
-    },
-
-      //---------- keyup paid Amount
+    //---------- keyup paid Amount
 
     Verified_paidAmount() {
       if (isNaN(this.facture.montant)) {
@@ -721,7 +424,7 @@ export default {
           this.$t("Warning")
         );
         this.facture.montant = 0;
-      } 
+      }
       else if (this.facture.montant > this.due) {
         this.makeToast(
           "warning",
@@ -737,7 +440,7 @@ export default {
     Verified_Received_Amount() {
       if (isNaN(this.facture.received_amount)) {
         this.facture.received_amount = 0;
-      } 
+      }
     },
 
     //---Validate State Fields
@@ -760,7 +463,6 @@ export default {
       this.Filter_Client = "";
       this.Filter_sale = "";
       this.Filter_status = "";
-      this.Filter_Payment = "";
       this.Filter_Ref = "";
       this.Filter_date = "";
       this.Filter_warehouse = "1";
@@ -776,8 +478,6 @@ export default {
         this.Filter_warehouse = "1";
       } else if (this.Filter_status === null) {
         this.Filter_status = "";
-      } else if (this.Filter_Payment === null) {
-        this.Filter_Payment = "";
       } else if (this.Filter_sale === null) {
         this.Filter_sale = "";
       }
@@ -802,7 +502,7 @@ export default {
       // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
-     
+
        axios
         .get("return_sale_pdf/" + id, {
           responseType: "blob", // important
@@ -834,7 +534,7 @@ export default {
       // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
-     
+
        axios
         .get("payment_return_sale_pdf/" + id, {
           responseType: "blob", // important
@@ -865,15 +565,12 @@ export default {
       let pdf = new jsPDF("p", "pt");
       let columns = [
         { title: this.$t("Reference"), dataKey: "Ref" },
-        { title:         this.$t("Customer"), dataKey: "client_name" },
-        { title:         this.$t("Sale_Ref"), dataKey: "sale_ref" },
-        { title:         this.$t("Status"), dataKey: "statut" },
-        { title:         this.$t("Total"), dataKey: "GrandTotal" },
-        { title:         this.$t("Paid"), dataKey: "paid_amount" },
-        { title:         this.$t("Due"), dataKey: "due" },
-        { title:         this.$t("PaymentStatus"), dataKey: "payment_status" }
+        { title: this.$t("Customer"), dataKey: "client_name" },
+        { title: this.$t("Sale_Ref"), dataKey: "sale_ref" },
+        { title: this.$t("Status"), dataKey: "statut" },
+        { title: this.$t("Total"), dataKey: "GrandTotal" },
       ];
-        
+
       pdf.autoTable(columns, self.sales_return);
       pdf.text("Liste des retours de ventes", 40, 25);
       pdf.save("Sales Return.pdf");
@@ -883,104 +580,6 @@ export default {
       axios
         .get("payment/returns_sale/Number/order")
         .then(({ data }) => (this.facture.Ref = data));
-    },
-
-    //----------------------------------- Add Payment Sale Return ------------------------------\\
-    New_Payment(sale_return) {
-      if (sale_return.payment_status == "paid") {
-        this.$swal({
-          icon: "error",
-          title: "Oops...",
-          text: this.$t("PaymentComplete")
-        });
-      } else {
-        // Start the progress bar.
-        NProgress.start();
-        NProgress.set(0.1);
-        this.reset_form_payment();
-        this.EditPaiementMode = false;
-        this.sale_return = sale_return;
-        this.facture.date = new Date().toISOString().slice(0, 10);
-        this.Number_Order_Payment();
-        this.facture.montant = parseFloat(sale_return.due);
-        this.facture.Reglement = 'Cash';
-        this.facture.received_amount = parseFloat(sale_return.due);
-        this.due = parseFloat(sale_return.due);
-        setTimeout(() => {
-          // Complete the animation of the  progress bar.
-          NProgress.done();
-          this.$bvModal.show("Add_Payment");
-        }, 500);
-      }
-    },
-
-    //------------------------------------Edit Payment ------------------------------\\
-    Edit_Payment(facture) {
-      // Start the progress bar.
-      NProgress.start();
-      NProgress.set(0.1);
-      this.reset_form_payment();
-      this.EditPaiementMode = true;
-      this.facture.id        = facture.id;
-      this.facture.Ref       = facture.Ref;
-      this.facture.Reglement = facture.Reglement;
-      this.facture.date    = facture.date;
-      this.facture.change  = facture.change;
-      this.facture.montant = parseFloat(facture.montant);
-      this.facture.received_amount = parseFloat(facture.montant + facture.change);
-      this.facture.notes   = facture.notes;
-      this.due = parseFloat(this.return_sale_due) + facture.montant;
-      setTimeout(() => {
-        // Complete the animation of the  progress bar.
-        NProgress.done();
-        this.$bvModal.show("Add_Payment");
-      }, 1000);
-    },
-
-    //------------------------------------ reset form payment  ------------------------------\\
-
-    reset_form_payment() {
-      this.due = 0;
-      this.facture = {
-        id: "",
-        sale_return_id: "",
-        date: "",
-        Ref: "",
-        montant: "",
-        received_amount: "",
-        Reglement: "",
-        notes: ""
-      };
-    },
-
-    //-------------------------------Show All Payment with Sale Return ---------------------\\
-    Show_Payments(id, sale_return) {
-      // Start the progress bar.
-      NProgress.start();
-      NProgress.set(0.1);
-      this.reset_form_payment();
-      this.sale_return_id = id;
-      this.sale_return = sale_return;
-      this.Get_Payments(id);
-    },
-
-    //----------------------------------------- Get Payments -------------------------------\\
-    Get_Payments(id) {
-      axios
-        .get("returns/sale/payment/" + id)
-        .then(response => {
-          this.factures = response.data.payments;
-          this.return_sale_due = response.data.due;
-          setTimeout(() => {
-            // Complete the animation of the  progress bar.
-            NProgress.done();
-            this.$bvModal.show("Show_payment");
-          }, 500);
-        })
-        .catch(() => {
-          // Complete the animation of the  progress bar.
-          setTimeout(() => NProgress.done(), 500);
-        });
     },
 
 
@@ -1006,8 +605,6 @@ export default {
             this.Filter_status +
             "&warehouse_id=" +
             this.Filter_warehouse +
-            "&payment_statut=" +
-            this.Filter_Payment +
             "&SortField=" +
             this.serverParams.sort.field +
             "&SortType=" +
@@ -1119,141 +716,11 @@ export default {
       });
     },
 
-    //----------------------------------Create Payment Sale Return ------------------------------\\
-    Create_Payment() {
-      this.paymentProcessing = true;
-      NProgress.start();
-      NProgress.set(0.1);
-        axios
-          .post("payment/returns_sale", {
-            sale_return_id: this.sale_return.id,
-            date: this.facture.date,
-            montant: parseFloat(this.facture.montant).toFixed(2),
-            received_amount: parseFloat(this.facture.received_amount).toFixed(2),
-            change: parseFloat(this.facture.received_amount - this.facture.montant).toFixed(2),
-            Reglement: this.facture.Reglement,
-            notes: this.facture.notes
-          })
-          .then(response => {
-            this.paymentProcessing = false;
-            Fire.$emit("Create_payment_Return_sale");
-
-            this.makeToast(
-              "success",
-              this.$t("Create.TitlePayment"),
-              this.$t("Success")
-            );
-          })
-          .catch(error => {
-            this.paymentProcessing = false;
-            NProgress.done();
-          });
-    },
-
-    //---------------------------------------- Update Payment Sale Return ------------------------------\\
-    Update_Payment() {
-      this.paymentProcessing = true;
-      NProgress.start();
-      NProgress.set(0.1);
-        axios
-          .put("payment/returns_sale/" + this.facture.id, {
-            sale_return_id: this.sale_return.id,
-            date: this.facture.date,
-            montant: parseFloat(this.facture.montant).toFixed(2),
-            received_amount: parseFloat(this.facture.received_amount).toFixed(2),
-            change: parseFloat(this.facture.received_amount - this.facture.montant).toFixed(2),
-            Reglement: this.facture.Reglement,
-            notes: this.facture.notes
-          })
-          .then(response => {
-            this.paymentProcessing = false;
-            Fire.$emit("Update_payment_Return_sale");
-
-            this.makeToast(
-              "success",
-              this.$t("Update.TitlePayment"),
-              this.$t("Success")
-            );
-          })
-          .catch(error => {
-            this.paymentProcessing = false;
-            NProgress.done();
-          });
-    },
-
-
-    //----------------------------------------- Remove Payment Return ------------------------------\\
-    Remove_Payment(id) {
-      this.$swal({
-        title: this.$t("Delete.Title"),
-        text: this.$t("Delete.Text"),
-        type: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        cancelButtonText: this.$t("Delete.cancelButtonText"),
-        confirmButtonText: this.$t("Delete.confirmButtonText")
-      }).then(result => {
-        if (result.value) {
-          // Start the progress bar.
-          NProgress.start();
-          NProgress.set(0.1);
-          axios
-            .delete("payment/returns_sale/" + id)
-            .then(() => {
-
-              this.makeToast(
-                "success",
-                this.$t("Delete.PaymentDeleted"),
-                this.$t("Delete.Deleted")
-              );
-            
-              Fire.$emit("Delete_payment_Return_sale");
-            })
-            .catch(() => {
-              // Complete the animation of the  progress bar.
-              setTimeout(() => NProgress.done(), 500);
-                this.makeToast(
-                "warning",
-                this.$t("Delete.Therewassomethingwronge"),
-                this.$t("Delete.Failed")
-              );
-              
-            });
-        }
-      });
-    }
   }, //End Methods
 
   //---------------------------------- Created Function -----------------------------\\
   created() {
     this.GET_Sales_Return(1);
-
-    Fire.$on("Create_payment_Return_sale", () => {
-      setTimeout(() => {
-        this.GET_Sales_Return(this.serverParams.page);
-        // Complete the animation of the  progress bar.
-        NProgress.done();
-      }, 800);
-        this.$bvModal.hide("Add_Payment");
-    });
-
-    Fire.$on("Update_payment_Return_sale", () => {
-      setTimeout(() => {
-        this.GET_Sales_Return(this.serverParams.page);
-        NProgress.done();
-        this.$bvModal.hide("Add_Payment");
-        this.$bvModal.hide("Show_payment");
-      }, 800);
-    });
-
-    Fire.$on("Delete_payment_Return_sale", () => {
-      setTimeout(() => {
-        this.GET_Sales_Return(this.serverParams.page);
-        NProgress.done();
-        this.$bvModal.hide("Show_payment");
-      }, 800);
-    });
 
     Fire.$on("Delete_Return_sale", () => {
       setTimeout(() => {

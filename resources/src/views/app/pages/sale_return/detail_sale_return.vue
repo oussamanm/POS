@@ -15,7 +15,7 @@
             <i class="i-Edit"></i>
             <span>{{$t('EditReturn')}}</span>
           </router-link>
-         
+
           <button @click="Return_PDF()" class="btn btn-primary btn-icon ripple btn-sm">
             <i class="i-File-TXT"></i> PDF
           </button>
@@ -60,18 +60,6 @@
 
               <div>{{$t('Reference')}} : {{sale_return.Ref}}</div>
               <div>{{$t('Sale_Ref')}} : {{sale_return.sale_ref}}</div>
-              <div>
-                {{$t('PaymentStatus')}} :
-                <span
-                  v-if="sale_return.payment_status == 'paid'"
-                  class="badge badge-outline-success"
-                >{{$t('Paid')}}</span>
-                <span
-                  v-else-if="sale_return.payment_status == 'partial'"
-                  class="badge badge-outline-primary"
-                >{{$t('partial')}}</span>
-                <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
-              </div>
               <!--<div>{{$t('warehouse')}} : {{sale_return.warehouse}}</div>-->
               <div>
                 {{$t('Status')}} :
@@ -141,26 +129,6 @@
                       <span
                         class="font-weight-bold"
                       >{{currentUser.currency}} {{sale_return.GrandTotal}}</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <span class="font-weight-bold">{{$t('Paid')}}</span>
-                    </td>
-                    <td>
-                      <span
-                        class="font-weight-bold"
-                      >{{currentUser.currency}} {{sale_return.paid_amount}}</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <span class="font-weight-bold">{{$t('Due')}}</span>
-                    </td>
-                    <td>
-                      <span
-                        class="font-weight-bold"
-                      >{{currentUser.currency}} {{sale_return.due}}</span>
                     </td>
                   </tr>
                 </tbody>

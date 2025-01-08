@@ -39,7 +39,7 @@ class ClientController extends BaseController
         $param = array(0 => 'like', 1 => 'like', 2 => 'like', 3 => 'like');
         $data = array();
         $clients = Client::with("user")->where('deleted_at', '=', null);
-        
+
         //Multiple Filter
         $Filtred = $helpers->filter($clients, $columns, $param, $request)
         // Search With Multiple Param
@@ -96,7 +96,7 @@ class ClientController extends BaseController
             $item['city'] = $client->city;
             $item['adresse'] = $client->adresse;
             $item['localisation'] = $client->localisation;
-            
+
             if ($client->user)
                 $client->user->fullname = $client->user->firstname . " " . $client->user->lastname;
             $item['user'] = $client->user;
@@ -111,7 +111,7 @@ class ClientController extends BaseController
             'vendors' => $vendors
         ]);
     }
-    
+
     public function app_index(request $request)
     {
         // $this->authorizeForUser($request->user('api'), 'view', Client::class);
@@ -120,33 +120,33 @@ class ClientController extends BaseController
         // How many items do you want to display.
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
-        
+
         // Start displaying items from this number;
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
-        
+
         $data = array();
-        
+
         if (empty($current_user) || $current_user->role_id === 1)
             $clients = Client::select(['id','code','name','phone', 'city','localisation','tax_number', 'adresse'])->where('deleted_at', '=', null);
         else
             $clients = Client::select(['id','code','name','phone', 'city','localisation', 'tax_number', 'adresse'])->where('deleted_at', '=', null)
                 ->where('id_user', $current_user->id);
-        
+
         // Search With Multiple Param
         if (!empty($request->search) && $request->search != "")
         {
             $search_value = $request->search;
-            
+
             $clients = $clients->where(function($query) use ($search_value){
                 $query->where('code', 'LIKE', "%{$search_value}%")
                     ->orWhere('name', 'LIKE', "%{$search_value}%");
             });
         }
-        
+
         $totalRows = $clients->count();
-        
+
         // Filter
         $clients = $clients->offset($offSet)
             ->limit($perPage)
@@ -187,30 +187,30 @@ class ClientController extends BaseController
             $item['code'] = $client->code;
             $item['city'] = $client->city;
             $item['tax_number'] = $client->tax_number;
-            
+
             $data[] = $item;
         }
-        
+
         return response()->json([
             'data' => $data,
             'totalPages' => ($totalRows/$request->limit),
         ]);
     }
-    
-    
+
+
     public function client_credit(request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', Client::class);
         // How many items do you want to display.
-        
+
         $data = array();
         $user_id = Auth::user()->id;
-        
+
         if ($user_id !== 1)
             $clients = Client::with("user")->where('id_user', $user_id)->where('deleted_at', '=', null);
         else
             $clients = Client::with("user")->where('deleted_at', '=', null);
-            
+
         $clients = $clients->orderBy('name', 'asc')->get();
 
 
@@ -245,13 +245,13 @@ class ClientController extends BaseController
 
             $data[] = $item;
         }
-        
+
         return response()->json([
             'data' => $data,
             'status' => true
         ]);
     }
-    
+
     //------------ function show -----------\\
 
     public function app_show($id)
@@ -273,20 +273,20 @@ class ClientController extends BaseController
                  'message' => 'client not found',
              ]);
         }
-        
+
         /////----- retrieve list of sales
-        
+
         // check if user has permission to view all data
         $Role = Auth::user()->roles()->first();
         $ShowRecord = Role::findOrFail($Role->id)->inRole('record_view');
-        
+
         // retrieve warehouses for user
         $warehouses = Auth::user()->assignedWarehouses()->pluck('id')->toArray();
 
         $current_user = Auth::user()->id;
-        
+
         $current_date = Carbon::now();
-        
+
         // get sales
         $sales = Sale::with('warehouse')
             ->where('deleted_at', '=', null)
@@ -301,37 +301,54 @@ class ClientController extends BaseController
             // })
             ->where('client_id', $id)
             ->select([
-                'id', 
-                'user_id', 
-                'date', 
-                'Ref', 
-                'warehouse_id', 
-                'GrandTotal', 
-                'paid_amount', 
-                'payment_statut', 
-                'statut', 
-                'notes', 
-                'created_at', 
+                'id',
+                'user_id',
+                'date',
+                'Ref',
+                'warehouse_id',
+                'GrandTotal',
+                'paid_amount',
+                'payment_statut',
+                'statut',
+                'notes',
+                'created_at',
                 DB::raw('(CASE WHEN payment_statut = "unpaid" AND DATEDIFF(NOW(), date) > 30 THEN true ELSE false end) as passed_month')
             ])
             ->limit(30)->get()->toArray();
-        
+
         /////----- retrieve list of Payments
-        
-        $payments = DB::table('payment_sales')
-            // ->where(function ($query) use ($ShowRecord) {
-            //     if (!$ShowRecord) {
-            //         return $query->where('payment_sales.user_id', '=', $current_user);
-            //     }
-            // })
-            ->where('payment_sales.deleted_at', '=', null)
+
+        $payments = PaymentSale::
+            with('sale.client')
+            ->select(
+                'payment_sales.date',
+                'payment_sales.Ref AS Ref',
+                'sales.Ref AS Sale_Ref',
+                'payment_sales.Reglement',
+                'payment_sales.montant',
+                DB::raw('SUM(montant) as total_payment')
+            )
+            ->groupBy('Ref')
+            ->whereNull('deleted_at')
             ->join('sales', 'payment_sales.sale_id', '=', 'sales.id')
             ->where('sales.client_id', $id)
-            ->select(
-                'payment_sales.date', 'payment_sales.Ref AS Ref', 'sales.Ref AS Sale_Ref',
-                'payment_sales.Reglement', 'payment_sales.montant'
-            )->limit(30)->get();
-        
+            ->limit(30)->get();
+
+        // $payments = DB::table('payment_sales')
+        //     // ->where(function ($query) use ($ShowRecord) {
+        //     //     if (!$ShowRecord) {
+        //     //         return $query->where('payment_sales.user_id', '=', $current_user);
+        //     //     }
+        //     // })
+        //     ->where('payment_sales.deleted_at', '=', null)
+        //     ->join('sales', 'payment_sales.sale_id', '=', 'sales.id')
+        //     ->where('sales.client_id', $id)
+        //     ->select(
+        //         'payment_sales.date', 'payment_sales.Ref AS Ref', 'sales.Ref AS Sale_Ref',
+        //         'payment_sales.Reglement', 'payment_sales.montant'
+        //     )
+        //     ->limit(30)->get();
+
         return response()->json([
             'status' => true,
             'client' => $client,
@@ -339,7 +356,7 @@ class ClientController extends BaseController
             'data_payments' => $payments,
         ]);
     }
-      
+
 
     //------------- Store new Customer -------------\\
 
@@ -351,7 +368,7 @@ class ClientController extends BaseController
             'name' => 'required',
             ]
         );
-        
+
         Client::create([
             'name' => $request['name'],
             'code' => $this->getNumberOrder(),
@@ -376,11 +393,11 @@ class ClientController extends BaseController
                 'localisation' => 'required',
             ]
         );
-        
+
         $updatedRows  = Client::whereId($request['id'])->update([
             'localisation' => $request['localisation']
         ]);
-        
+
         if ($updatedRows > 0)
             return response()->json(['success' => true]);
         else
@@ -388,12 +405,12 @@ class ClientController extends BaseController
     }
 
 
-    
+
     //------------ function show -----------\\
 
     public function show($id){
         //
-        
+
     }
 
     //------------- Update Customer -------------\\
@@ -401,7 +418,7 @@ class ClientController extends BaseController
     public function update(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Client::class);
-        
+
         $this->validate($request, [
             'name' => 'required',
             ]
@@ -417,14 +434,14 @@ class ClientController extends BaseController
             'tax_number' => $request['tax_number'],
             'id_user' => $request['user_id']
         ]);
-        
+
         return response()->json(['success' => true]);
     }
 
     public function update_app(Request $request, $id)
     {
         $this->authorizeForUser($request->user('api'), 'update', Client::class);
-        
+
         $this->validate($request, [
             'name' => 'required',
             ]
@@ -432,14 +449,14 @@ class ClientController extends BaseController
 
         // Get all request data except for the _method and _token
         $requestData = $request->except(['_method', '_token']);
-    
+
         // Update the client only with the provided columns in the request
         $updatedColumns = array_filter($requestData, function ($value) {
             return $value !== null;
         });
-    
+
         Client::whereId($id)->update($updatedColumns);
-        
+
         return response()->json(['success' => true]);
     }
 
@@ -524,7 +541,7 @@ class ClientController extends BaseController
             } else {
                 return null;
             }
-           
+
             $rules = array('name' => 'required');
 
             //-- Create New Client
@@ -533,7 +550,7 @@ class ClientController extends BaseController
 
                 $validator = Validator::make($input, $rules);
                 if (!$validator->fails()) {
-                    
+
                     Client::create([
                         'name' => $value['name'],
                         'code' => $this->getNumberOrder(),
@@ -546,7 +563,7 @@ class ClientController extends BaseController
                     ]);
 
                 }
-               
+
 
             }
 
@@ -563,7 +580,7 @@ class ClientController extends BaseController
      public function clients_pay_due(Request $request)
      {
          $this->authorizeForUser($request->user('api'), 'pay_due', Client::class);
-        
+
          if($request['amount'] > 0)
          {
             $client_sales_due = Sale::where('deleted_at', '=', null)
@@ -573,10 +590,10 @@ class ClientController extends BaseController
             ])->get();
 
             $paid_amount_total = $request->amount;
-            
+
             // Added by oussama, so all added payment get same ref
             $generated_ref = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
-            
+
             foreach($client_sales_due as $key => $client_sale)
             {
                 if($paid_amount_total == 0)
@@ -609,36 +626,36 @@ class ClientController extends BaseController
                 $paid_amount_total -= $amount;
             }
         }
-        
+
          return response()->json(['success' => true]);
- 
+
      }
-     
+
     public function app_clients_pay_due(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'pay_due', Client::class);
-        
+
         if ($request['amount'] <= 0)
             response()->json(['success' => false, 'message' => "invalid input"]);
-            
+
 
         $client_sales_due = Sale::where('deleted_at', '=', null)
         ->where([
             ['payment_statut', '!=', 'paid'],
             ['client_id', $request->client_id]
         ])->get();
-        
+
         $paid_amount_total = $request->amount;
-        
+
         // Added by oussama, so all added payment get same ref
         $generated_ref = app('App\Http\Controllers\PaymentSalesController')->getNumberOrder();
-        
+
         foreach($client_sales_due as $key => $client_sale)
         {
             if($paid_amount_total == 0)
                 break;
             $due = $client_sale->GrandTotal  - $client_sale->paid_amount;
-        
+
             if($paid_amount_total >= $due)
             {
                 $amount = $due;
@@ -649,7 +666,7 @@ class ClientController extends BaseController
                 $amount = $paid_amount_total;
                 $payment_status = 'partial';
             }
-        
+
             $payment_sale = new PaymentSale();
             $payment_sale->sale_id = $client_sale->id;
             $payment_sale->Ref = $generated_ref;
@@ -660,29 +677,29 @@ class ClientController extends BaseController
             $payment_sale->notes = $request['notes'];
             $payment_sale->user_id = Auth::user()->id;
             $payment_sale->payment_received = 0;
-            
+
             $payment_sale->save();
-        
+
             $client_sale->paid_amount += $amount;
             $client_sale->payment_statut = $payment_status;
             $client_sale->save();
-        
+
             $paid_amount_total -= $amount;
         }
 
-        
+
         return response()->json(['success' => true]);
 
     }
-     
-     
+
+
 
     //------------- clients_pay_sale_return_due -------------\\
 
     public function pay_sale_return_due(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'pay_sale_return_due', Client::class);
-        
+
         if($request['amount'] > 0){
             $client_sell_return_due = SaleReturn::where('deleted_at', '=', null)
             ->where([
@@ -723,7 +740,7 @@ class ClientController extends BaseController
                 $paid_amount_total -= $amount;
             }
         }
-        
+
         return response()->json(['success' => true]);
 
     }

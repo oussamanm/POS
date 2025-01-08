@@ -671,13 +671,13 @@
                                     <span class="item-name">{{ $t('Sales') }}</span>
                                 </router-link>
                             </li>
-                            <li
+                            <!-- <li
                                 v-if="currentUserPermissions && currentUserPermissions.includes('Reports_payments_Sale_Returns')">
                                 <router-link tag="a" class to="/app/reports/payments_sales_returns">
                                     <i class="nav-icon i-ID-Card"></i>
                                     <span class="item-name">{{ $t('SalesReturn') }}</span>
                                 </router-link>
-                            </li>
+                            </li> -->
                             <li
                                 v-if="currentUserPermissions && currentUserPermissions.includes('Reports_payments_purchase_Return')">
                                 <router-link tag="a" class to="/app/reports/payments_purchases_returns">
