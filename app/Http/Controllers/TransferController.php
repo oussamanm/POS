@@ -128,21 +128,21 @@ class TransferController extends BaseController
 
         // Get Warehawe ID for that user
         $warehouse_id = (Auth::user()->warehouse !== null) ? Auth::user()->warehouse : 1;
-    
+
         // Search
         if (!empty($request->search) && $request->search !== "")
         {
             $tmp_search = strtolower($request->search);
-            
+
             $transfers = $transfers->where(function($query) use ($tmp_search) {
                 $query->where('Ref', 'LIKE', "%".$tmp_search."%");
             });
         }
-        
+
         // Filter Date
         if (!empty($request->date) && $request->date !== "")
             $transfers = $transfers->where('date', $request->date);
-        
+
         // Filter with Warehouse
         if (!$request->filled('transferType') || $request->transferType === "")
         {
@@ -160,12 +160,12 @@ class TransferController extends BaseController
         $totalRows = $transfers->count();
         if($perPage == "-1")
             $perPage = $totalRows;
-        
+
         $transfers = $transfers->offset($offSet)
             ->limit($perPage)
             ->orderBy($order, $dir)
             ->get();
-        
+
         $data = array();
         foreach ($transfers as $transfer) {
             $item['id'] = $transfer->id;
@@ -176,8 +176,8 @@ class TransferController extends BaseController
             $item['GrandTotal'] = $transfer->GrandTotal;
             $item['items'] = $transfer->items;
             $item['statut'] = $transfer->statut;
-            $item['transferType'] = ($transfer->from_warehouse_id === $warehouse_id) ? "out" : "in";    
-        
+            $item['transferType'] = ($transfer->from_warehouse_id === $warehouse_id) ? "out" : "in";
+
             $data[] = $item;
         }
 
@@ -186,7 +186,7 @@ class TransferController extends BaseController
             'data' => $data,
         ]);
     }
-    
+
     //------------ Store New Transfer -----------\\
 
     public function store(Request $request)
@@ -219,7 +219,7 @@ class TransferController extends BaseController
             $data = $request['details'];
 
             foreach ($data as $key => $value) {
-               
+
                 $unit = Unit::where('id', $value['purchase_unit_id'])->first();
 
                 if ($request->transfer['statut'] == "completed")
@@ -255,7 +255,7 @@ class TransferController extends BaseController
                                 $product_warehouse_to->qte += $value['quantity'] / $unit->operator_value;
                             else
                                 $product_warehouse_to->qte += $value['quantity'] * $unit->operator_value;
-                            
+
                             $product_warehouse_to->save();
                         }
 
@@ -682,8 +682,8 @@ class TransferController extends BaseController
                      ->where('id', $value['product_id'])
                      ->first();
                      $unit = Unit::where('id', $product_unit_purchase_id['unitPurchase']->id)->first();
-                 } 
- 
+                 }
+
                 if ($current_Transfer->statut == "completed") {
                     if ($value['product_variant_id'] !== null) {
 
@@ -777,7 +777,7 @@ class TransferController extends BaseController
                         }
                     }
                 }
-                   
+
             }
 
             $current_Transfer->details()->delete();
@@ -821,7 +821,7 @@ class TransferController extends BaseController
                     ->where('id', $value['product_id'])
                     ->first();
                     $unit = Unit::where('id', $product_unit_purchase_id['unitPurchase']->id)->first();
-                } 
+                }
 
                if ($current_Transfer->statut == "completed") {
                    if ($value['product_variant_id'] !== null) {
@@ -916,7 +916,7 @@ class TransferController extends BaseController
                        }
                    }
                }
-                  
+
            }
 
             $current_Transfer->details()->delete();
@@ -1046,7 +1046,7 @@ class TransferController extends BaseController
                 $data['product_variant_id'] = null;
                 $data['code'] = $detail['product']['code'];
                 $data['name'] = $detail['product']['name'];
-               
+
                 if ($unit && $unit->operator == '/') {
                     $data['stock'] = $item_product ? $item_product->qte * $unit->operator_value : 0;
                 } else if ($unit && $unit->operator == '*') {
@@ -1093,12 +1093,11 @@ class TransferController extends BaseController
        //get warehouses assigned to user
        $user_auth = auth()->user();
        if($user_auth->is_all_warehouses){
-           $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+           $warehouses = Warehouse::where('deleted_at', '=', null)->where('active', 1)->get(['id', 'name']);
        }else{
            $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-           $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
+           $warehouses = Warehouse::where('deleted_at', '=', null)->where('active', 1)->whereIn('id', $warehouses_id)->get(['id', 'name']);
        }
-
         return response()->json([
             'details' => $details,
             'transfer' => $transfer,
@@ -1180,15 +1179,15 @@ class TransferController extends BaseController
        //get warehouses assigned to user
        $user_auth = auth()->user();
        if($user_auth->is_all_warehouses){
-           $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+           $warehouses = Warehouse::where('deleted_at', '=', null)->where('active', 1)->get(['id', 'name']);
        }else{
            $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-           $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
+           $warehouses = Warehouse::where('deleted_at', '=', null)->where('active', 1)->whereIn('id', $warehouses_id)->get(['id', 'name']);
        }
-       
+
         return response()->json(['warehouses' => $warehouses]);
     }
 
-  
+
 
 }

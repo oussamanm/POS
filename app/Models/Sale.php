@@ -55,4 +55,9 @@ class Sale extends Model
         return $this->belongsTo('App\Models\Warehouse');
     }
 
+    public function shipment()
+    {
+        return $this->hasMany('App\Models\Shipment');
+    }
+
 }

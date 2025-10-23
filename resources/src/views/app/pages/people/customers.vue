@@ -14,9 +14,9 @@
         @on-search="onSearch"
         :search-options="{
         enabled: true,
-        placeholder: $t('Search_this_table'),  
+        placeholder: $t('Search_this_table'),
       }"
-        :select-options="{ 
+        :select-options="{
           enabled: true ,
           clearSelectionText: '',
         }"
@@ -104,15 +104,15 @@
                   {{$t('pay_all_sell_return_due_at_a_time')}}
                 </b-dropdown-item>
 
-                 <b-dropdown-item
+                <b-dropdown-item
                   @click="showDetails(props.row)"
                 >
                   <i class="nav-icon i-Eye font-weight-bold mr-2"></i>
                   {{$t('Customer_details')}}
                 </b-dropdown-item>
-               
+
                 <b-dropdown-item :to="'/app/reports/detail_customer/'+props.row.id">
-                  
+
                   <i class="nav-icon i-Credit-Card2 font-weight-bold mr-2"></i>
                   {{$t('Rapport de client')}}
                 </b-dropdown-item>
@@ -136,6 +136,11 @@
                 </b-dropdown>
             </div>
           </span>
+
+          <div v-else-if="props.column.field == 'strict_credit'">
+            <span v-if="props.row.strict_credit == 0" class="badge badge-outline-success">Non</span>
+            <span v-else class="badge badge-outline-warning">Oui</span>
+          </div>
         </template>
 
       </vue-good-table>
@@ -199,7 +204,7 @@
       >
         <b-form @submit.prevent="Submit_Payment_sell_due">
           <b-row>
-          
+
             <!-- Paying Amount  -->
             <b-col lg="6" md="12" sm="12">
               <validation-provider
@@ -282,7 +287,7 @@
       >
         <b-form @submit.prevent="Submit_Payment_sell_return_due">
           <b-row>
-          
+
             <!-- Paying Amount -->
             <b-col lg="6" md="12" sm="12">
               <validation-provider
@@ -477,7 +482,7 @@
                 </b-form-group>
               </validation-provider>
             </b-col>
-            
+
              <!-- Customer Email -->
             <b-col md="6" sm="12">
                 <b-form-group :label="$t('Email')">
@@ -510,8 +515,8 @@
                   ></b-form-input>
                 </b-form-group>
             </b-col>
-            
-            
+
+
             <b-col md="6" sm="12">
                 <b-form-group label="Vendeurs">
                   <v-select
@@ -522,8 +527,8 @@
                   />
                 </b-form-group>
             </b-col>
-            
-            
+
+
             <!-- Customer City -->
             <b-col md="6" sm="12">
                 <b-form-group :label="$t('City')">
@@ -535,8 +540,19 @@
                 </b-form-group>
             </b-col>
 
-             <!-- Customer Tax Number -->
+            <!-- Customer Zone -->
             <b-col md="6" sm="12">
+                <b-form-group label="Zone">
+                  <b-form-input
+                    label="Zone"
+                    v-model="client.zone"
+                    placeholder="Zone"
+                  ></b-form-input>
+                </b-form-group>
+            </b-col>
+
+             <!-- Customer Tax Number -->
+            <b-col md="12" sm="12">
                 <b-form-group :label="$t('Tax_Number')">
                   <b-form-input
                     label="Tax Number"
@@ -545,6 +561,37 @@
                   ></b-form-input>
                 </b-form-group>
             </b-col>
+
+            <!-- Customer Max Credit -->
+            <b-col md="6" sm="12">
+                <b-form-group label="Max Credit">
+                  <b-form-input
+                    label="Max Credit"
+                    v-model="client.max_credit"
+                    placeholder="Max Credit"
+                  ></b-form-input>
+                </b-form-group>
+            </b-col>
+
+            <!-- Customer Strict Credit -->
+            <b-col md="6" sm="12">
+                <b-form-group label="Limiter les Ventes">
+                  <!-- <b-form-checkbox
+                    v-model="client.strict_credit"
+                    switch
+                    :true-value="1"
+                    :false-value="0"
+                  ></b-form-checkbox> -->
+                  <div class="form-check">
+                    <label class="checkbox checkbox-outline-primary mt-2">
+                      <input type="checkbox" v-model="client.strict_credit">
+                      <h5>Limiter les Ventes</h5>
+                      <span class="checkmark"></span>
+                    </label>
+                  </div>
+                </b-form-group>
+            </b-col>
+
 
             <!-- Customer Adress -->
             <b-col md="12" sm="12">
@@ -576,7 +623,7 @@
       <b-row>
 
         <b-col md="12" v-if="savedPaymentMethods && savedPaymentMethods.length > 0">
-            <div class="mt-3"><span >Saved Credit Card Info For This Client </span></div>    
+            <div class="mt-3"><span >Saved Credit Card Info For This Client </span></div>
             <table class="table table-hover mt-3">
               <thead>
                 <tr>
@@ -596,11 +643,11 @@
                   <td>
                       <b-button variant="outline-primary" @click="selectCard(card)" v-if="!isSelectedCard(card) && card_id != card.card_id">
                         <span>
-                          <i class="i-Drag-Up"></i> 
+                          <i class="i-Drag-Up"></i>
                           Set as default
                         </span>
                       </b-button>
-                        <span v-if="isSelectedCard(card) || card_id == card.card_id"><i class="i-Yes" style=" font-size: 20px; "></i> 
+                        <span v-if="isSelectedCard(card) || card_id == card.card_id"><i class="i-Yes" style=" font-size: 20px; "></i>
                         Default credit card  </span>
                   </td>
                 </tr>
@@ -610,10 +657,10 @@
         </b-col>
 
         <b-col md="12" v-else>
-            <div class="mt-3"><span >Customer don't have credit card saved </span></div>    
+            <div class="mt-3"><span >Customer don't have credit card saved </span></div>
         </b-col>
 
-       
+
       </b-row>
     </b-modal>
 
@@ -649,14 +696,14 @@
                 <th>{{client.email}}</th>
               </tr>
               <tr>
-                <!-- Customer country -->
-                <td>{{$t('Country')}}</td>
-                <th>{{client.country}}</th>
-              </tr>
-              <tr>
                 <!-- Customer City -->
                 <td>{{$t('City')}}</td>
                 <th>{{client.city}}</th>
+              </tr>
+              <tr>
+                <!-- Customer zone -->
+                <td>Zone</td>
+                <th>{{client.zone}}</th>
               </tr>
               <tr>
                 <!-- Customer Adress -->
@@ -678,17 +725,25 @@
                 <th>{{client.tax_number}}</th>
               </tr>
 
-              <tr>
-                <!-- Total_Sale_Due -->
-                <td>{{$t('Total_Sale_Due')}}</td>
-                <th>{{currentUser.currency}} {{client.due}}</th>
-              </tr>
+                <tr>
+                    <!-- Total_Sale_Due -->
+                    <td>Total Crédit</td>
+                    <th>{{currentUser.currency}} {{client.due}}</th>
+                </tr>
+                <tr>
+                    <!-- Limiter les Ventes -->
+                    <td>Limiter les Ventes</td>
+                    <th>
+                        <span v-if="client.strict_credit == 0" class="badge badge-outline-success">Non</span>
+                        <span v-else class="badge badge-outline-warning">Oui</span>
+                    </th>
+                </tr>
+                <tr>
+                    <!-- Max Credit -->
+                    <td>Max Crédit</td>
+                    <th>{{currentUser.currency}} {{client.max_credit}}</th>
+                </tr>
 
-               <tr>
-                <!-- Total_Sell_Return_Due -->
-                <td>{{$t('Total_Sell_Return_Due')}}</td>
-                <th>{{currentUser.currency}} {{client.return_Due}}</th>
-              </tr>
             </tbody>
           </table>
         </b-col>
@@ -738,7 +793,7 @@
 
                 <tr>
                   <td>{{$t('Phone')}}</td>
-                 
+
                 </tr>
 
                 <tr>
@@ -846,7 +901,9 @@ export default {
         city: "",
         adresse: "",
         tax_number: "",
-
+        strict_credit: "",
+        max_credit: "",
+        zone: "",
       }
     };
   },
@@ -896,34 +953,29 @@ export default {
           thClass: "text-left"
         },
         {
-          label: this.$t("Email"),
-          field: "email",
+          label: "Max Credit",
+          field: "max_credit",
+          type: "decimal",
           tdClass: "text-left",
-          thClass: "text-left"
+          thClass: "text-left",
+          sortable: false
         },
         {
-          label: this.$t("Tax_Number"),
-          field: "tax_number",
+          label: "Ordres Limités",
+          field: "strict_credit",
+          html: true,
           tdClass: "text-left",
-          thClass: "text-left"
+          thClass: "text-left",
+          sortable: false
         },
         {
-          label: this.$t("Total_Sale_Due"),
+          label: "Credit",
           field: "due",
           type: "decimal",
           tdClass: "text-left",
           thClass: "text-left",
-          sortable: false
+          sortable: true
         },
-        {
-          label: this.$t("Total_Sell_Return_Due"),
-          field: "return_Due",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-
         {
           label: this.$t("Action"),
           field: "actions",
@@ -937,13 +989,13 @@ export default {
   },
 
   methods: {
-    
+
     redirectToMap() {
 
         if (this.client.localisation !== null)
         {
             const tab = this.client.localisation.split(';');
-            
+
             window.open(`https://www.google.com/maps/search/?api=1&query=${tab[0]}%2C${tab[1]}`, "_blank");
         }
         else
@@ -955,7 +1007,7 @@ export default {
             );
         }
     },
-        
+
     //------------- Submit Validation Create & Edit Customer
     Submit_Customer() {
       this.$refs.Create_Customer.validate().then(success => {
@@ -1054,8 +1106,7 @@ export default {
       let columns = [
         { title: this.$t("#"), dataKey: "code" },
         { title: this.$t("Name"), dataKey: "name" },
-        { title: ("Vente"), dataKey: "due" },
-        { title: ("Retour"), dataKey: "return_Due" },
+        { title: ("Credit"), dataKey: "due" },
         { title: ("Nº TVA"), dataKey: "tax_number" },
         { title: this.$t("Phone"), dataKey: "phone" },
         { title: this.$t("Email"), dataKey: "email" },
@@ -1220,7 +1271,7 @@ export default {
         .post("update-customer-stripe", {
           customer_id: this.customer_id,
           card_id: this.card_id,
-         
+
         })
         .then(response => {
 
@@ -1234,7 +1285,7 @@ export default {
         .catch(error => {
             this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
         });
-      
+
     },
 
     //----------------------------------- Show Details Client -------------------------------\\
@@ -1245,7 +1296,7 @@ export default {
       this.client = client;
       Fire.$emit("Get_Details_customers");
     },
-    
+
 
 
     //------------------------------ Show Modal (create Client) -------------------------------\\
@@ -1280,7 +1331,10 @@ export default {
           country: this.client.country,
           city: this.client.city,
           adresse: this.client.adresse,
-          user_id: this.client.user_id
+          user_id: this.client.user_id,
+          zone: this.client.zone,
+          max_credit: this.client.max_credit,
+          strict_credit: this.client.strict_credit,
         })
         .then(response => {
           Fire.$emit("Event_Customer");
@@ -1293,7 +1347,7 @@ export default {
           this.SubmitProcessing = false;
         })
         .catch(error => {
-          
+
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
           this.SubmitProcessing = false;
         });
@@ -1304,14 +1358,17 @@ export default {
       this.SubmitProcessing = true;
       axios
         .put("clients/" + this.client.id, {
-          name: this.client.name,
-          email: this.client.email,
-          phone: this.client.phone,
-          tax_number: this.client.tax_number,
-          country: this.client.country,
-          city: this.client.city,
-          adresse: this.client.adresse,
-          user_id: this.client.user_id
+            name: this.client.name,
+            email: this.client.email,
+            phone: this.client.phone,
+            tax_number: this.client.tax_number,
+            country: this.client.country,
+            city: this.client.city,
+            adresse: this.client.adresse,
+            user_id: this.client.user_id,
+            zone: this.client.zone,
+            max_credit: this.client.max_credit,
+            strict_credit: this.client.strict_credit,
         })
         .then(response => {
           Fire.$emit("Event_Customer");
@@ -1323,7 +1380,7 @@ export default {
           this.SubmitProcessing = false;
         })
         .catch(error => {
-         
+
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
           this.SubmitProcessing = false;
         });
@@ -1458,7 +1515,7 @@ export default {
           this.$t("Warning")
         );
         this.payment.amount = 0;
-      } 
+      }
     },
 
       //-------------------------------- reset_Form_payment-------------------------------\\
@@ -1484,7 +1541,7 @@ export default {
       setTimeout(() => {
         this.$bvModal.show("modal_Pay_due");
       }, 500);
-      
+
     },
 
      //------------------------------ Print Customer_Invoice -------------------------\\
@@ -1567,7 +1624,7 @@ export default {
           this.$t("Warning")
         );
         this.payment_return.amount = 0;
-      } 
+      }
     },
 
       //-------------------------------- reset_Form_payment-------------------------------\\
@@ -1593,7 +1650,7 @@ export default {
       setTimeout(() => {
         this.$bvModal.show("modal_Pay_return_due");
       }, 500);
-      
+
     },
 
      //------------------------------ Print Customer_Invoice -------------------------\\

@@ -40,8 +40,13 @@ class AuthController extends BaseController
         $tokenResult = $user->createToken('Access Token');
         $token = $tokenResult->token;
         $this->setCookie('Stocky_token', $tokenResult->accessToken);
-        
+
         $tmp = Auth::User();
+
+        $first_role = $tmp->roles->first();
+        $permissions = [];
+        if ($first_role && $first_role->permissions)
+            $permissions = $first_role->permissions->pluck('name');
 
         return response()->json([
             'Stocky_token' => $tokenResult->accessToken,
@@ -50,7 +55,9 @@ class AuthController extends BaseController
             'email' => $tmp->email,
             'id' => $tmp->id,
             'role_id' => $tmp->role_id,
+            'role_name' => $first_role->name,
             'status' => true,
+            'permissions' => $permissions,
         ]);
     }
 

@@ -19,6 +19,7 @@ use App\Models\Client;
 use App\Models\UserWarehouse;
 use App\Models\PaymentSale;
 use App\Models\Role;
+use App\Models\User;
 use App\Models\Sale;
 use App\Models\Setting;
 use Carbon\Carbon;
@@ -32,6 +33,7 @@ use Stripe;
 use DB;
 use PDF;
 use ArPHP\I18N\Arabic;
+use Twilio\TwiML\Voice\Pay;
 
 class PaymentSalesController extends BaseController
 {
@@ -45,22 +47,35 @@ class PaymentSalesController extends BaseController
         // How many items do you want to display.
         $perPage = $request->limit;
         $pageStart = \Request::get('page', 1);
+
+        if ($perPage == "-1")
+            $perPage = 1000000;
+
         // Start displaying items from this number;
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
         $helpers = new helpers();
+
         $role = Auth::user()->roles()->first();
         $view_records = Role::findOrFail($role->id)->inRole('record_view');
+
         // Filter fields With Params to retriever
-        $param = array(0 => 'like', 1 => '=', 2 => 'like');
-        $columns = array(0 => 'Ref', 1 => 'sale_id', 2 => 'Reglement');
+        $param = array(0 => 'like', 1 => '=', 2 => 'like', 3 => '=', 4 => '=');
+        $columns = array(0 => 'Ref', 1 => 'sale_id', 2 => 'Reglement', 3 => 'user_id', 4 => 'payment_received');
         $data = array();
 
+        // check if payment_received para in request is null and unset it from request
+        if($request->payment_received == null || $request->payment_received == "null")
+            request()->merge(['payment_received' => null]);
+
         // Check If User Has Permission View  All Records
-        $Payments = PaymentSale::with('sale.client')
+        $Payments = PaymentSale::with('sale.client', 'user')
             ->where('deleted_at', '=', null)
+            ->where('sale_id', '!=', null) // this line added to hide payments linked with returns
             ->whereBetween('date', array($request->from, $request->to))
+            ->select('*', DB::raw('SUM(montant) as total_payment'))
+            ->groupBy('Ref')
             ->where(function ($query) use ($view_records) {
                 if (!$view_records) {
                     return $query->where('user_id', '=', Auth::user()->id);
@@ -74,8 +89,9 @@ class PaymentSalesController extends BaseController
                     });
                 });
             });
-        $Filtred = $helpers->filter($Payments, $columns, $param, $request)
+
         // Search With Multiple Param
+        $Filtred = $helpers->filter($Payments, $columns, $param, $request)
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
@@ -105,29 +121,60 @@ class PaymentSalesController extends BaseController
 
         foreach ($Payments as $Payment) {
 
+            $item['id'] = $Payment->id;
             $item['date'] = $Payment->date;
             $item['Ref'] = $Payment->Ref;
             $item['Ref_Sale'] = $Payment['sale']->Ref;
+            $item['user_name'] = $Payment->user->username;
             $item['client_name'] = $Payment['sale']['client']->name;
             $item['Reglement'] = $Payment->Reglement;
-            $item['montant'] = $Payment->montant;
-            // $item['montant'] = number_format($Payment->montant, 2, '.', '');
+            $item['payment_received'] = $Payment->payment_received;
+            // $item['montant'] = $Payment->total_payment;
+            $item['notes'] = $Payment->notes;
+            $item['total_payment'] = number_format($Payment->total_payment, 2, '.', '');
             $data[] = $item;
         }
 
         $clients = Client::where('deleted_at', '=', null)->get(['id', 'name']);
-        $sales = Sale::get(['Ref', 'id']);
+        $users =  User::where('deleted_at', '=', null)->where('statut', 1)->select('id', DB::raw("CONCAT(firstname, ' ', lastname) as name"))->get();
 
         return response()->json([
             'totalRows' => $totalRows,
             'payments' => $data,
-            'sales' => $sales,
             'clients' => $clients,
+            'users' => $users,
         ]);
     }
 
-    
-    
+    public function get_sales_by_payment($id)
+    {
+        $payment = PaymentSale::findOrFail($id);
+        if(empty($payment))
+            return response()->json(['success' => false, 'data' => []]);
+
+        $ref = $payment->Ref;
+
+        $data = PaymentSale::where('Ref', $ref)
+            ->with('sale:id,Ref,date,GrandTotal,paid_amount')
+            ->whereNull('deleted_at')
+            ->get();
+
+        $sales = [];
+
+        foreach ($data as $item)
+        {
+            $sales[] = [
+                'id' => $item->sale->id,
+                'Ref' => $item->sale->Ref,
+                'date' => $item->sale->date,
+                'GrandTotal' => $item->sale->GrandTotal,
+                'paid_amount' => $item->sale->paid_amount,
+            ];
+        }
+
+        return response()->json(['success' => true, 'data' => $sales]);
+    }
+
     public function get_payment_by_user(request $request)
     {
         // $this->authorizeForUser($request->user('api'), 'Reports_payments_Sales', PaymentSale::class);
@@ -140,7 +187,7 @@ class PaymentSalesController extends BaseController
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = $request->SortField;
         $dir = $request->SortType;
-        
+
         // Filter fields With Params to retriever
         $data = array();
 
@@ -149,6 +196,7 @@ class PaymentSalesController extends BaseController
             ->select('*', DB::raw('SUM(montant) as total_payment'))
             ->groupBy('Ref')
             ->where('deleted_at', '=', null)
+            ->where('sale_id', '!=', null) // this line added to hide payments linked with returns
             ->when($user_id !== 1, function ($query) use ($user_id) {
                 $query->where('user_id', $user_id);
             })
@@ -157,12 +205,12 @@ class PaymentSalesController extends BaseController
                     $q->where('id', '=', $request->client_id);
                 });
             });
-        
+
         // Search With Multiple Param
         if (!empty($request->search) && $request->search != "")
         {
             $search_value = $request->search;
-            
+
             $Payments = $Payments->where(function($query) use ($search_value){
                 $query->where('Ref', 'LIKE', "%{$search_value}%")
                     ->orWhere('montant', 'LIKE' ,"%{$search_value}%")
@@ -171,38 +219,38 @@ class PaymentSalesController extends BaseController
                     });
             });
         }
-        
+
         // Filter
         if (isset($request->date) && !empty($request->date))
             $Payments = $Payments->where('date', $request->date);
-        
+
         if($perPage == "-1")
             $perPage = 20;
 
         $totalRows = $Payments->getQuery()->getCountForPagination();
-        
+
         $Payments = $Payments->offset($offSet)
             ->limit($perPage)
             ->orderBy($order, $dir)
             ->get();
-        
 
-        foreach ($Payments as $Payment) {
 
+        foreach ($Payments as $Payment)
+        {
             $item['date'] = $Payment->date;
             $item['Ref'] = $Payment->Ref;
             $item['notes'] = $Payment->notes;
-            $item['Ref_Sale'] = $Payment['sale']->Ref;
-            $item['client_name'] = $Payment['sale']['client']->name;
+            $item['Ref_Sale'] = ($Payment['sale']) ? $Payment['sale']->Ref : '';
+            $item['client_name'] = ($Payment['sale']) ? $Payment['sale']['client']->name : '';
             $item['Reglement'] = $Payment->Reglement;
             $item['montant'] = number_format($Payment->montant, 2, ',', ' ');
             $item['total_payment'] = number_format($Payment->total_payment, 2, ',', ' ');
             // $item['montant'] = number_format($Payment->montant, 2, '.', '');
             $data[] = $item;
         }
-        
+
         /// in case of admin retriever all $clients
-        
+
         $clients = Client::where('deleted_at', '=', null)
             ->when($user_id !== null, function ($query) use ($user_id) {
             $query->where('id_user', $user_id);
@@ -216,39 +264,39 @@ class PaymentSalesController extends BaseController
             'clients' => $clients,
         ]);
     }
-    
+
     public function get_payment_by_ref(Request $request)
     {
         if (!isset($request->ref) || $request->ref === "")
             return response()->json(['status' => false]);
-        
+
         $Payments = PaymentSale::with('sale:id,Ref,date')
             ->select(['id', 'date', 'Ref', 'montant', 'sale_id'])
             ->where('deleted_at', '=', null)
             ->where('Ref', $request->ref)
             ->get();
-        
+
 
         return response()->json([
             'status' => true,
             'data' => $Payments,
         ]);
     }
-    
+
     public function payments_vendeur(request $request)
     {
         $this->authorizeForUser($request->user('api'), 'Reports_payments_Sales', PaymentSale::class);
-        
+
         if (empty($request->warehouse_id) || $request->warehouse_id == null)
             return response()->json(['status' => false]);
 
         // // How many items do you want to display.
         $user_id = Auth::user()->id;
         $warehouse_id = $request->warehouse_id;
-        
-        // Get User ID from $warehouse_id 
+
+        // Get User ID from $warehouse_id
         $user_warehouse = UserWarehouse::where('warehouse_id', $warehouse_id)->first();
-        
+
         if (empty($user_warehouse) || $user_warehouse == null)
             return response()->json(['status' => false]);
 
@@ -256,6 +304,7 @@ class PaymentSalesController extends BaseController
         $data = array();
 
         $Payments = PaymentSale::with('sale.client:id,name')
+            ->where('sale_id', '!=', null) // this line added to hide payments linked with returns
             ->select('*', DB::raw('SUM(montant) as total_payment'))
             ->groupBy('Ref')
             ->where('user_id', $user_warehouse->user_id)
@@ -280,7 +329,7 @@ class PaymentSalesController extends BaseController
             $item['Reglement'] = $Payment->Reglement;
             // $item['montant'] = number_format($Payment->montant, 2, ',', ' ');
             $item['total_payment'] = $Payment->total_payment;
-            
+
             $totalSummary += $Payment->total_payment;
             $data[] = $item;
         }
@@ -290,20 +339,20 @@ class PaymentSalesController extends BaseController
             'totalSummary' => $totalSummary,
         ]);
     }
-    
+
     public function recieved_payments(request $request)
     {
         $ids = $request->input('tab_ref');
-        
+
         if (!isset($ids) || $ids === "" || $ids === null)
             return response()->json(['status' => false, 'message' => $ids]);
-        
+
         $Payments = PaymentSale::whereIn('Ref', $ids)->where('deleted_at' , null)->update(['payment_received' => 1]);
-        
+
         return response()->json(['status' => true, 'message' => '']);
     }
 
-    
+
 
     //----------- Store new Payment Sale --------------\\
 
@@ -456,7 +505,7 @@ class PaymentSalesController extends BaseController
 
     public function show($id){
     //
-        
+
     }
 
     //----------- Update Payments Sale --------------\\
@@ -506,7 +555,7 @@ class PaymentSalesController extends BaseController
                         'payment_statut' => $payment_statut,
                     ]);
 
-                } 
+                }
 
             } catch (Exception $e) {
                 return response()->json(['message' => $e->getMessage()], 500);
@@ -557,7 +606,7 @@ class PaymentSalesController extends BaseController
                     \Stripe\Refund::create([
                         'charge' => $PaymentWithCreditCard->charge_id,
                     ]);
-    
+
                     $PaymentWithCreditCard->delete();
                 }
             }
@@ -579,19 +628,22 @@ class PaymentSalesController extends BaseController
 
     //----------- Reference order Payment Sales --------------\\
 
-    public function getNumberOrder()
+    public function getNumberOrder($for_rtn = false)
     {
-        $last = DB::table('payment_sales')->latest('id')->first();
+        if ($for_rtn == false)
+            $last = DB::table('payment_sales')->whereNotNull('sale_id')->latest('id')->first();
+        else
+            $last = DB::table('payment_sales')->whereNull('sale_id')->latest('id')->first();
 
-        if ($last) {
+        if ($last && $last->Ref != null)
+        {
             $item = $last->Ref;
             $nwMsg = explode("_", $item);
             $inMsg = $nwMsg[1] + 1;
             $code = $nwMsg[0] . '_' . $inMsg;
-
-        } else {
-            $code = 'INV/SL_1111';
         }
+        else
+            $code = 'INV/SL_1111';
 
         return $code;
     }
@@ -653,7 +705,7 @@ class PaymentSalesController extends BaseController
 
         //settings
         $settings = Setting::where('deleted_at', '=', null)->first();
-    
+
         //the custom msg of payment_received
         $emailMessage  = EmailMessage::where('name', 'payment_received')->first();
 
@@ -664,12 +716,12 @@ class PaymentSalesController extends BaseController
             $message_body = '';
             $message_subject = '';
         }
-    
-        
+
+
         $payment_number = $payment->Ref;
 
         $total_amount = $currency .' '.number_format($payment->montant, 2, '.', ',');
-    
+
         $contact_name = $payment['sale']['client']->name;
         $business_name = $settings->CompanyName;
 
@@ -686,16 +738,16 @@ class PaymentSalesController extends BaseController
         $email['body'] = $message_body;
         $email['company_name'] = $business_name;
 
-        $this->Set_config_mail(); 
+        $this->Set_config_mail();
 
         $mail = Mail::to($receiver_email)->send(new CustomEmail($email));
 
         return $mail;
     }
-   
- 
-   
-   
+
+
+
+
     //-------------------Sms Notifications -----------------\\
 
     public function Send_SMS(Request $request)
@@ -707,7 +759,7 @@ class PaymentSalesController extends BaseController
 
         //settings
         $settings = Setting::where('deleted_at', '=', null)->first();
-        
+
         $default_sms_gateway = sms_gateway::where('id' , $settings->sms_gateway)
          ->where('deleted_at', '=', null)->first();
 
@@ -722,14 +774,14 @@ class PaymentSalesController extends BaseController
         }else{
             $message_text = '';
         }
-        
+
         $payment_number = $payment->Ref;
 
         $total_amount = $currency .' '.number_format($payment->montant, 2, '.', ',');
-        
+
         $contact_name = $payment['sale']['client']->name;
         $business_name = $settings->CompanyName;
-    
+
         //receiver phone
         $receiverNumber = $payment['sale']['client']->phone;
 
@@ -742,16 +794,16 @@ class PaymentSalesController extends BaseController
         //twilio
         if($default_sms_gateway->title == "twilio"){
             try {
-    
+
                 $account_sid = env("TWILIO_SID");
                 $auth_token = env("TWILIO_TOKEN");
                 $twilio_number = env("TWILIO_FROM");
-    
+
                 $client = new Client_Twilio($account_sid, $auth_token);
                 $client->messages->create($receiverNumber, [
-                    'from' => $twilio_number, 
+                    'from' => $twilio_number,
                     'body' => $message_text]);
-        
+
             } catch (Exception $e) {
                 return response()->json(['message' => $e->getMessage()], 500);
             }
@@ -762,13 +814,13 @@ class PaymentSalesController extends BaseController
                 $basic  = new \Nexmo\Client\Credentials\Basic(env("NEXMO_KEY"), env("NEXMO_SECRET"));
                 $client = new \Nexmo\Client($basic);
                 $nexmo_from = env("NEXMO_FROM");
-        
+
                 $message = $client->message()->send([
                     'to' => $receiverNumber,
                     'from' => $nexmo_from,
                     'text' => $message_text
                 ]);
-                        
+
             } catch (Exception $e) {
                 return response()->json(['message' => $e->getMessage()], 500);
             }
@@ -784,25 +836,25 @@ class PaymentSalesController extends BaseController
                 ->setHost($BASE_URL)
                 ->setApiKeyPrefix('Authorization', 'App')
                 ->setApiKey('Authorization', $API_KEY);
-            
+
             $client = new Client_guzzle();
-            
+
             $sendSmsApi = new SendSMSApi($client, $configuration);
             $destination = (new SmsDestination())->setTo($receiverNumber);
             $message = (new SmsTextualMessage())
                 ->setFrom($SENDER)
                 ->setText($message_text)
                 ->setDestinations([$destination]);
-                
+
             $request = (new SmsAdvancedTextualRequest())->setMessages([$message]);
-            
+
             try {
                 $smsResponse = $sendSmsApi->sendSmsMessage($request);
                 echo ("Response body: " . $smsResponse);
             } catch (Throwable $apiException) {
                 echo("HTTP Code: " . $apiException->getCode() . "\n");
             }
-            
+
         }
 
         return response()->json(['success' => true]);

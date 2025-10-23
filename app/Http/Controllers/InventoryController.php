@@ -184,12 +184,12 @@ class InventoryController extends BaseController
 
             foreach ($details as $key => $value)
             {
-                if ($value['new_stock'] == "" || $value['new_stock'] == null)
+                if ($value['new_stock'] === "" || $value['new_stock'] === null)
                     continue;
 
                 // update count_stock_details
                 $detail = CountStockDetail::findOrFail($value['id']);
-                if ($detail->new_stock == $value['new_stock'])
+                if ($detail->new_stock === $value['new_stock'])
                     continue;
                 $detail->new_stock = $value['new_stock'];
                 $detail->save();
@@ -251,19 +251,19 @@ class InventoryController extends BaseController
         {
             \DB::transaction(function () use ($inventory, $details) {
 
-                $adjustmentsDetail = [];
+                // $adjustmentsDetail = [];
                 foreach ($details as $key => $value)
                 {
-                    if (($value['new_stock'] == $value['old_stock']) || $value['new_stock'] == "" || $value['new_stock'] == null)
+                    if (($value['new_stock'] === $value['old_stock']) || $value['new_stock'] === "" || $value['new_stock'] === null)
                         continue;
 
-                    $adjustmentsDetail[] = [
-                        'adjustment_id' => null,
-                        'quantity' => $value['old_stock'],
-                        'product_id' => $value['product_id'],
-                        // 'product_variant_id' => $value['product_variant_id'],
-                        'type' => 'sub-inventory',
-                    ];
+                    // $adjustmentsDetail[] = [
+                    //     'adjustment_id' => null,
+                    //     'quantity' => $value['old_stock'],
+                    //     'product_id' => $value['product_id'],
+                    //     // 'product_variant_id' => $value['product_variant_id'],
+                    //     'type' => 'sub-inventory',
+                    // ];
 
                     $product_warehouse = product_warehouse::where('deleted_at', '=', null)
                         ->where('warehouse_id', $inventory->warehouse_id)
@@ -278,8 +278,8 @@ class InventoryController extends BaseController
                     }
                 }
 
-                if (count($adjustmentsDetail) > 0)
-                    AdjustmentDetail::insert($adjustmentsDetail);
+                // if (count($adjustmentsDetail) > 0)
+                //     AdjustmentDetail::insert($adjustmentsDetail);
 
                 // set to applied
                 $inventory->applied = true;
@@ -294,4 +294,32 @@ class InventoryController extends BaseController
         }
     }
 
+    public function duplicate_zero()
+    {
+        $inventory = CountStock::where('id', 5)->first();
+
+        if (empty($inventory))
+            return;
+
+        $details = $inventory->details;
+
+        $ids = $details->whereNotNull('new_stock')->where('new_stock', '=', 0)->pluck('product_id');
+
+        dd($ids);
+
+        dd("asd");
+        // Create details
+        $new_inventory = CountStock::where('id', 5)->first();
+        $new_details = $new_inventory->details;
+        foreach ($new_details as $detail)
+        {
+            // check if detail is in $ids
+            if ($ids->contains($detail->product_id))
+            {
+                $detail->new_stock = 0;
+                $detail->save();
+            }
+
+        }
+    }
 }

@@ -1012,6 +1012,15 @@ const routes = [
                                 "./views/app/pages/reports/vendor_report"
                             )
                     },
+                    {
+                        name: "pre_vendor_report",
+                        path: "pre_vendor_report",
+                        component: () =>
+                            import(
+                                /* webpackChunkName: "vendor_report" */
+                                "./views/app/pages/reports/pre_vendor_report"
+                            )
+                    },
 
                     {
                         name: "sales_report",

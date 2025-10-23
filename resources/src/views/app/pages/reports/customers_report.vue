@@ -22,7 +22,7 @@
         placeholder: $t('Search_this_table'),
         enabled: true,
       }"
-      
+
         :pagination-options="{
         enabled: true,
         mode: 'records',
@@ -73,9 +73,9 @@ export default {
       client: {},
       rows: [{
           total_sales: 'Total',
-         
+
           children: [
-             
+
           ],
       },],
     };
@@ -85,7 +85,7 @@ export default {
     ...mapGetters(["currentUser"]),
     columns() {
       return [
-       
+
         {
           label: this.$t("CustomerName"),
           field: "name",
@@ -99,47 +99,42 @@ export default {
           thClass: "text-left"
         },
         {
-          label: this.$t("TotalSales"),
+          label: "Nombre des Ventes",
           field: "total_sales",
           tdClass: "text-left",
           thClass: "text-left",
-          sortable: false
         },
         {
-          label: this.$t("Amount"),
+          label: "Total Ventes",
           field: "total_amount",
           type: "decimal",
           headerField: this.sumCount,
           tdClass: "text-left",
           thClass: "text-left",
-          sortable: false
         },
         {
           label: this.$t("Paid"),
-          field: "total_paid",
+          field: "total_payments",
           type: "decimal",
           headerField: this.sumCount2,
           tdClass: "text-left",
           thClass: "text-left",
-          sortable: false
         },
         {
-          label: this.$t("Total_Sale_Due"),
-          field: "due",
+          label: "Total Retours",
+          field: "total_return",
           type: "decimal",
           headerField: this.sumCount3,
           tdClass: "text-left",
           thClass: "text-left",
-          sortable: false
         },
         {
-          label: this.$t("Total_Sell_Return_Due"),
-          field: "return_Due",
+          label: "Due",
+          field: "due",
           type: "decimal",
           headerField: this.sumCount4,
           tdClass: "text-left",
           thClass: "text-left",
-          sortable: false
         },
         {
           label: this.$t("Action"),
@@ -156,7 +151,7 @@ export default {
   methods: {
 
     sumCount(rowObj) {
-     
+
     	let sum = 0;
       for (let i = 0; i < rowObj.children.length; i++) {
         sum += rowObj.children[i].total_amount;
@@ -164,15 +159,24 @@ export default {
       return sum;
     },
     sumCount2(rowObj) {
-     
+
     	let sum = 0;
       for (let i = 0; i < rowObj.children.length; i++) {
-        sum += rowObj.children[i].total_paid;
+        sum += rowObj.children[i].total_payments;
       }
       return sum;
     },
     sumCount3(rowObj) {
-     
+
+    	let sum = 0;
+      for (let i = 0; i < rowObj.children.length; i++) {
+        sum += rowObj.children[i].total_return;
+      }
+      return sum;
+    },
+
+    sumCount4(rowObj) {
+
     	let sum = 0;
       for (let i = 0; i < rowObj.children.length; i++) {
         sum += rowObj.children[i].due;
@@ -180,22 +184,13 @@ export default {
       return sum;
     },
 
-    sumCount4(rowObj) {
-     
-    	let sum = 0;
-      for (let i = 0; i < rowObj.children.length; i++) {
-        sum += rowObj.children[i].return_Due;
-      }
-      return sum;
-    },
 
-    
      //--------------------------- Download_PDF-------------------------------\\
     Download_PDF(client , id) {
       // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
-     
+
        axios
         .get("report/client_pdf/" + id, {
           responseType: "blob", // important
@@ -314,7 +309,7 @@ export default {
 
   created: function() {
     this.Get_Client_Report(1);
-    
+
   }
 };
 </script>

@@ -82,6 +82,9 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
 
     Route::get('app/pay_all_sales', 'SalesController@pay_all_sales');
 
+    Route::post('app/shipments', 'ShipmentController@app_store');
+
+
 
 
     //-------------------------- Reports ---------------------------
@@ -103,9 +106,12 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get("report/stock_alert", "ReportController@Products_Alert");
     Route::get("report/payment_chart", "ReportController@Payment_chart");
     Route::get("report/warehouse_report", "ReportController@Warehouse_Report");
+    Route::get("report/prevendeur_report", "ReportController@Pre_Vendeur_Report");
     Route::get("report/sales_warehouse", "ReportController@Sales_Warehouse");
+    Route::get("report/sales_user", "ReportController@Sales_User");
     Route::get("report/quotations_warehouse", "ReportController@Quotations_Warehouse");
     Route::get("report/returns_sale_warehouse", "ReportController@Returns_Sale_Warehouse");
+    Route::get("report/returns_sale_user", "ReportController@Returns_Sale_User");
     Route::get("report/returns_purchase_warehouse", "ReportController@Returns_Purchase_Warehouse");
     Route::get("report/expenses_warehouse", "ReportController@Expenses_Warehouse");
     Route::get("report/warhouse_count_stock", "ReportController@Warhouse_Count_Stock");
@@ -346,6 +352,7 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::get('payment_sale_get_number', 'PaymentSalesController@getNumberOrder');
     Route::post('payment_sale_send_email', 'PaymentSalesController@SendEmail');
     Route::post('payment_sale_send_sms', 'PaymentSalesController@Send_SMS');
+    Route::get('get_sales_by_payment/{id}', 'PaymentSalesController@get_sales_by_payment');
 
     //------------------------------- Expenses --------------------------\\
     //------------------------------------------------------------------\\
@@ -482,24 +489,27 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
 
 });
 
-    //-------------------------------  Print & PDF ------------------------\\
-    //------------------------------------------------------------------\\
+//-------------------------------  Print & PDF ------------------------\\
+//------------------------------------------------------------------\\
 
-    Route::get('sale_pdf/{id}', 'SalesController@Sale_PDF');
-    Route::get('my_sale_pdf/{id}/{type}', 'SalesController@My_Sale_PDF');
-    Route::get('quote_pdf/{id}', 'QuotationsController@Quotation_pdf');
-    Route::get('purchase_pdf/{id}', 'PurchasesController@Purchase_pdf');
-    Route::get('return_sale_pdf/{id}', 'SalesReturnController@Return_pdf');
-    Route::get('return_purchase_pdf/{id}', 'PurchasesReturnController@Return_pdf');
-    Route::get('payment_purchase_pdf/{id}', 'PaymentPurchasesController@Payment_purchase_pdf');
-    Route::get('payment_return_sale_pdf/{id}', 'PaymentSaleReturnsController@payment_return');
-    Route::get('payment_return_purchase_pdf/{id}', 'PaymentPurchaseReturnsController@payment_return');
-    Route::get('payment_sale_pdf/{id}', 'PaymentSalesController@payment_sale');
-    Route::get('sales_print_invoice/{id}', 'SalesController@Print_Invoice_POS');
+Route::get('sale_pdf/{id}', 'SalesController@Sale_PDF');
+Route::get('my_sale_pdf/{id}/{type}', 'SalesController@My_Sale_PDF');
+Route::get('quote_pdf/{id}', 'QuotationsController@Quotation_pdf');
+Route::get('purchase_pdf/{id}', 'PurchasesController@Purchase_pdf');
+Route::get('return_sale_pdf/{id}', 'SalesReturnController@Return_pdf');
+Route::get('return_purchase_pdf/{id}', 'PurchasesReturnController@Return_pdf');
+Route::get('payment_purchase_pdf/{id}', 'PaymentPurchasesController@Payment_purchase_pdf');
+Route::get('payment_return_sale_pdf/{id}', 'PaymentSaleReturnsController@payment_return');
+Route::get('payment_return_purchase_pdf/{id}', 'PaymentPurchaseReturnsController@payment_return');
+Route::get('payment_sale_pdf/{id}', 'PaymentSalesController@payment_sale');
+Route::get('sales_print_invoice/{id}', 'SalesController@Print_Invoice_POS');
 
-    //---- count stock ----------
-    Route::get('count_stock', 'ProductsController@count_stock_list');
-    Route::post('inventory/new', 'InventoryController@store');
-    Route::get('inventory/{id}/edit', 'InventoryController@edit');
-    Route::put('inventory/{id}', 'InventoryController@update');
-    Route::get('inventory/{id}/apply_stock', 'InventoryController@apply_stock');
+//---- count stock ----------
+Route::get('count_stock', 'ProductsController@count_stock_list');
+Route::post('inventory/new', 'InventoryController@store');
+Route::get('inventory/{id}/edit', 'InventoryController@edit');
+Route::put('inventory/{id}', 'InventoryController@update');
+Route::get('inventory/{id}/apply_stock', 'InventoryController@apply_stock');
+
+Route::get('correct_data_sales_payments', 'ReportController@correct_data_sales_payments');
+Route::get('duplicate_zero', 'InventoryController@duplicate_zero');

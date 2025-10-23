@@ -62,6 +62,7 @@
       <b-col md="12">
         <b-card no-body class="card mb-30" header-bg-variant="transparent ">
           <b-tabs active-nav-item-class="nav nav-tabs" content-class="mt-3">
+
             <!-- Quotations Table -->
             <b-tab :title="$t('Quotations')">
               <vue-good-table
@@ -226,18 +227,6 @@
                       class="badge badge-outline-success"
                     >{{$t('Received')}}</span>
                     <span v-else class="badge badge-outline-info">{{$t('Pending')}}</span>
-                  </div>
-
-                  <div v-else-if="props.column.field == 'payment_status'">
-                    <span
-                      v-if="props.row.payment_status == 'paid'"
-                      class="badge badge-outline-success"
-                    >{{$t('Paid')}}</span>
-                    <span
-                      v-else-if="props.row.payment_status == 'partial'"
-                      class="badge badge-outline-primary"
-                    >{{$t('partial')}}</span>
-                    <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
                   </div>
                    <div v-else-if="props.column.field == 'Ref'">
                     <router-link
@@ -595,32 +584,8 @@ export default {
           sortable: false
         },
         {
-          label: this.$t("Paid"),
-          field: "paid_amount",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Due"),
-          field: "due",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-         {
           label: this.$t("Status"),
           field: "statut",
-          html: true,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("PaymentStatus"),
-          field: "payment_status",
           html: true,
           tdClass: "text-left",
           thClass: "text-left",
@@ -737,7 +702,7 @@ export default {
           sortable: false
         },
         {
-          label: this.$t("Categorie"),
+          label: "Categorie",
           field: "category_name",
           tdClass: "text-left",
           thClass: "text-left",
@@ -798,10 +763,10 @@ export default {
         { title: "sale_ref", dataKey: "sale_ref" },
         { title: "Warehouse", dataKey: "warehouse_name" },
         { title: "Total", dataKey: "GrandTotal" },
-        { title: "Paid", dataKey: "paid_amount" },
-        { title: "Due", dataKey: "due" },
+        // { title: "Paid", dataKey: "paid_amount" },
+        // { title: "Due", dataKey: "due" },
         { title: "Status", dataKey: "statut" },
-        { title: "Status Payment", dataKey: "payment_status" }
+        // { title: "Status Payment", dataKey: "payment_status" }
       ];
       pdf.autoTable(columns, self.returns_sale);
       pdf.text("Sales Return List", 40, 25);

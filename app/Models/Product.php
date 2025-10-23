@@ -10,7 +10,7 @@ class Product extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'code', 'Type_barcode', 'name', 'ar_name', 'cost', 'price', 'min_price', 'unit_id', 'unit_sale_id', 'unit_purchase_id',
+        'code', 'Type_barcode', 'name', 'ar_name', 'cost', 'price', 'wholesale_price', 'min_price', 'unit_id', 'unit_sale_id', 'unit_purchase_id',
         'stock_alert', 'category_id', 'sub_category_id', 'is_variant','is_imei',
         'tax_method', 'image', 'brand_id', 'is_active', 'note','type'
     ];
@@ -27,6 +27,7 @@ class Product extends Model
         'is_active' => 'integer',
         'cost' => 'double',
         'price' => 'double',
+        'wholesale_price' => 'double',
         'min_price' => 'double',
         'stock_alert' => 'double',
         'TaxNet' => 'double',
@@ -76,16 +77,16 @@ class Product extends Model
     {
         return $this->belongsTo('App\Models\Brand');
     }
-    
+
     public function stock($warehouseIdTab, $warehouseId)
     {
         $result = $this->hasMany('App\Models\product_warehouse');
-        
+
         if ($warehouseId !== null)
             $result = $result->where('warehouse_id', $warehouseId);
-        
+
         $result = $result->whereIn('warehouse_id', $warehouseIdTab);
-        
+
         return $result;
     }
 

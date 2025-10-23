@@ -12,14 +12,14 @@
         @on-per-page-change="onPerPageChange"
         @on-sort-change="onSortChange"
         @on-search="onSearch"
-        :select-options="{ 
+        :select-options="{
           enabled: true ,
           clearSelectionText: '',
         }"
         @on-selected-rows-change="selectionChanged"
         :search-options="{
           enabled: true,
-          placeholder: $t('Search_this_table'),  
+          placeholder: $t('Search_this_table'),
         }"
         :pagination-options="{
         enabled: true,
@@ -383,7 +383,7 @@ export default {
           tdClass: "text-left",
           thClass: "text-left"
         },
-       
+
         {
           label: this.$t("Cost"),
           field: "cost",
@@ -395,6 +395,14 @@ export default {
         {
           label: this.$t("Price"),
           field: "price",
+          // type: "decimal",
+          html: true,
+          tdClass: "text-left",
+          thClass: "text-left"
+        },
+        {
+          label: "Prix de Gros",
+          field: "wholesale_price",
           // type: "decimal",
           html: true,
           tdClass: "text-left",
@@ -522,11 +530,11 @@ export default {
               this.$t("Failed")
             );
             }
-         
+
         });
     },
 
-    
+
     //------ Toast
     makeToast(variant, msg, title) {
       this.$root.$bvToast.toast(msg, {

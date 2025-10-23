@@ -276,18 +276,6 @@
                     >{{$t('Received')}}</span>
                     <span v-else class="badge badge-outline-info">{{$t('Pending')}}</span>
                   </div>
-
-                  <div v-else-if="props.column.field == 'payment_status'">
-                    <span
-                      v-if="props.row.payment_status == 'paid'"
-                      class="badge badge-outline-success"
-                    >{{$t('Paid')}}</span>
-                    <span
-                      v-else-if="props.row.payment_status == 'partial'"
-                      class="badge badge-outline-primary"
-                    >{{$t('partial')}}</span>
-                    <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
-                  </div>
                    <div v-else-if="props.column.field == 'Ref'">
                     <router-link
                       :to="'/app/sale_return/detail/'+props.row.id"
@@ -600,32 +588,8 @@ export default {
           sortable: false
         },
         {
-          label: this.$t("Paid"),
-          field: "paid_amount",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Due"),
-          field: "due",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-         {
           label: this.$t("Status"),
           field: "statut",
-          html: true,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("PaymentStatus"),
-          field: "payment_status",
           html: true,
           tdClass: "text-left",
           thClass: "text-left",

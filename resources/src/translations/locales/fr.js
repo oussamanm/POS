@@ -803,7 +803,7 @@ export default {
     Add_product_IMEI_Serial_number:'Ajouter le produit IMEI/numéro de série',
     Product_Has_Imei_Serial_number:'Le produit a un numéro IMEI/série',
     IMEI_SN:'IMEI/SN',
-    Shipments:'Expéditions',
+    Shipments:'Livraison',
     delivered_to:'Livré à',
     shipment_ref:'Réf d\'expédition',
     sale_ref:'Réf vente',

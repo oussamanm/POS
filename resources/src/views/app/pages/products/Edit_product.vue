@@ -49,7 +49,7 @@
                   </validation-provider>
                 </b-col>
 
-               
+
               <validation-provider name="Barcode Symbology" :rules="{ required: true}">
                 <b-form-group
                   slot-scope="{ valid, errors }"
@@ -199,7 +199,7 @@
 
             <b-card class="mt-3">
               <b-row>
-              
+
                  <!-- type -->
 
                 <b-col md="6" class="mb-2  d-none" v-if="product.type == 'is_single'">
@@ -212,7 +212,7 @@
                   </b-form-group>
                 </b-col>
 
-               
+
 
                 <b-col md="6" class="mb-2  d-none" v-else-if="product.type == 'is_variant'">
                   <b-form-group :label="$t('type')">
@@ -264,6 +264,33 @@
                         label="Price"
                         :placeholder="$t('Enter_Product_Price')"
                         v-model="product.price"
+                      ></b-form-input>
+
+                      <b-form-invalid-feedback
+                        id="ProductPrice-feedback"
+                      >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
+                <!-- prix de gros -->
+                <b-col
+                  md="6"
+                  class="mb-2"
+                  v-if="product.type == 'is_single' || product.type == 'is_service'"
+                >
+                  <validation-provider
+                    name="Product Price"
+                    :rules="{ required: true , regex: /^\d*\.?\d*$/}"
+                    v-slot="validationContext"
+                  >
+                    <b-form-group label="Prix de Gros *">
+                      <b-form-input
+                        :state="getValidationState(validationContext)"
+                        aria-describedby="ProductPrice-feedback"
+                        label="Prix de Gros"
+                        :placeholder="$t('Enter_Product_Price')"
+                        v-model="product.wholesale_price"
                       ></b-form-input>
 
                       <b-form-invalid-feedback
@@ -329,7 +356,7 @@
                       slot-scope="{ valid, errors }"
                     >
                       <v-select
-                      
+
                         :hidden="true"
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -446,7 +473,7 @@
                 </div>
               </b-row>
             </b-card>
-           
+
             <b-card class="mt-3">
               <b-row>
                 <!-- Product_Has_Imei_Serial_number -->
@@ -592,7 +619,7 @@ export default {
             (Math.pow(10, 8) - Math.pow(10, 7) - 1)
       );
     },
-    
+
     //------------- Submit Validation Update Product
     Submit_Product() {
       this.$refs.Edit_Product.validate().then(success => {
@@ -652,7 +679,7 @@ export default {
               "Please Enter the Variant",
               this.$t("Warning")
             );
-            
+
           }
       }
     },
@@ -665,7 +692,7 @@ export default {
       }
     },
 
-   
+
 
     //------ event upload Image Success
     uploadImageSuccess(formData, index, fileList, imageArray) {
@@ -723,7 +750,7 @@ export default {
 
     //------------------------------ Update Product ------------------------------\\
     Update_Product() {
-      
+
       NProgress.start();
       NProgress.set(0.1);
       var self = this;
@@ -740,7 +767,7 @@ export default {
       Object.entries(self.product).forEach(([key, value]) => {
           self.data.append(key, value);
       });
-                
+
       //append array variants
       if (self.variants.length) {
           for (var i = 0; i < self.variants.length; i++) {

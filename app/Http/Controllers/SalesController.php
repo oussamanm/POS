@@ -81,6 +81,7 @@ class SalesController extends BaseController
             4 => '=',
             5 => '=',
             6 => 'like',
+            7 => '=',
         );
         $columns = array(
             0 => 'Ref',
@@ -90,6 +91,7 @@ class SalesController extends BaseController
             4 => 'warehouse_id',
             5 => 'date',
             6 => 'shipping_status',
+            7 => 'user_id',
         );
         $data = array();
 
@@ -123,6 +125,11 @@ class SalesController extends BaseController
                                 $q->where('name', 'LIKE', "%{$request->search}%");
                             });
                         });
+                });
+            })
+            ->when($request->filled('user_id_livreur'), function ($query) use ($request) {
+                return $query->whereHas('shipment', function ($q) use ($request) {
+                    $q->where('user_id', $request->user_id_livreur);
                 });
             });
 
@@ -172,21 +179,34 @@ class SalesController extends BaseController
 
         $stripe_key = config('app.STRIPE_KEY');
         $customers = client::where('deleted_at', '=', null)->get(['id', 'name']);
+        $livreur = User::whereHas('roles', function ($q) {
+            $q->where('name', 'Livreur');
+        })->get(['id', 'username']);
 
        //get warehouses assigned to user
        $user_auth = auth()->user();
        if($user_auth->is_all_warehouses){
-           $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+           $warehouses = Warehouse::where('active', 1)->where('deleted_at', '=', null)->get(['id', 'name']);
        }else{
            $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-           $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
+           $warehouses = Warehouse::where('active', 1)->where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
        }
+
+       // get list user
+        $users = User::where('deleted_at', '=', null)->with('roles')->get(['id', 'username', 'role_id']);
+        foreach ($users as $user) {
+            $role = $user->roles->first();
+            $user['role_name'] = $role->name;
+            unset($user['roles']);
+        }
 
         return response()->json([
             'stripe_key' => $stripe_key,
             'totalRows' => $totalRows,
+            'users' => $users,
             'sales' => $data,
             'customers' => $customers,
+            'livreurs' => $livreur,
             'warehouses' => $warehouses,
         ]);
     }
@@ -202,17 +222,24 @@ class SalesController extends BaseController
         // (removed) check if can see all data of all
 
         // Start displaying items from this number;
-        $columns = ['id', 'Ref','statut','client_id','payment_statut','warehouse_id','date', 'user_id','GrandTotal','paid_amount'];
         $offSet = ($pageStart * $perPage) - $perPage;
         $order = empty($request->SortField) ? 'id' : $request->SortField;
         $dir = empty($request->SortType) ? 'DESC' : $request->SortType;
 
         $Sales = Sale::with('warehouse:id,name','user:id,username')
-            ->select(['sales.id', 'Ref','statut','client_id','payment_statut','warehouse_id','date', 'user_id','GrandTotal','paid_amount', 'clients.name as client_name'])
+            ->select(['sales.id', 'Ref','statut','client_id','payment_statut', 'shipping_status','warehouse_id','date', 'user_id','GrandTotal','paid_amount', 'clients.name as client_name'])
             ->join('clients', 'sales.client_id', '=', 'clients.id')
             ->where('sales.deleted_at', '=', null)
-            ->when(($current_user->role_id !== 1), function ($query) use($current_user){
+            ->when(($current_user->role_id == 2), function ($query) use($current_user){
                 return $query->where('warehouse_id', $current_user->warehouse);
+            })
+            ->when(($current_user->role_id == 4), function ($query) use($current_user){
+                return $query->where('user_id', $current_user->id);
+            })
+            ->when(($current_user->role_id == 5), function ($query) use($current_user){
+                return $query->whereHas('shipment', function ($q) use($current_user){
+                    $q->where('user_id', $current_user->id);
+                });
             });
 
 
@@ -243,6 +270,9 @@ class SalesController extends BaseController
             if (isset($request->selectedStatus) && !empty($request->selectedStatus))
                 $Sales = $Sales->where('payment_statut', $request->selectedStatus);
         }
+
+        if (isset($request->selectedStatusShipping) && !empty($request->selectedStatusShipping))
+            $Sales = $Sales->where('shipping_status', $request->selectedStatusShipping);
 
         // Correct Ordering if field = name
         if ($order === "name")
@@ -280,22 +310,29 @@ class SalesController extends BaseController
 
         $details = array();
 
+        $sale_details['id'] = $sale_data->id;
         $sale_details['Ref'] = $sale_data->Ref;
         $sale_details['date'] = $sale_data->date;
         $sale_details['note'] = $sale_data->notes;
         $sale_details['statut'] = $sale_data->statut;
-        $sale_details['statut_fr'] = ($sale_data->statut === "completed") ? "Completé" : ($sale_data->statut === "pending") ? "En attente" : "Commandé";
+        $sale_details['statut_fr'] = ($sale_data->statut === "completed") ? "Completé" : (($sale_data->statut === "pending") ? "En attente" : "Commandé");
         $sale_details['payment_received'] = $sale_data->payment_received;
         $sale_details['warehouse'] = $sale_data['warehouse']->name;
         $sale_details['discount'] = $sale_data->discount;
+
         $sale_details['client_name'] = $sale_data['client']->name;
         $sale_details['client_phone'] = $sale_data['client']->phone;
         $sale_details['client_adr'] = $sale_data['client']->adresse;
+        $sale_details['client_city'] = $sale_data['client']->city;
+        $sale_details['client_localisation'] = $sale_data['client']->localisation;
+
         $sale_details['GrandTotal'] = number_format($sale_data->GrandTotal, 2, '.', '');
         $sale_details['paid_amount'] = number_format($sale_data->paid_amount, 2, '.', '');
         $sale_details['due'] = number_format($sale_details['GrandTotal'] - $sale_details['paid_amount'], 2, '.', '');
         $sale_details['payment_status'] = $sale_data->payment_statut;
-        $sale_details['payment_status_fr'] = ($sale_data->payment_statut  === "paid") ? "Payé" : ($sale_data->payment_statut === "unpaid") ? "Non Payé" : "Partiel";
+        $sale_details['shipping_status'] = $sale_data->shipping_status;
+        $sale_details['payment_status_fr'] = ($sale_data->payment_statut  === "paid") ? "Payé" : (($sale_data->payment_statut === "unpaid") ? "Non Payé" : "Partiel");
+        $sale_details['shipping_status_fr'] = ($sale_data->shipping_status  === "shipped") ? "En Livraison" : (($sale_data->shipping_status  === "delivered") ? "Livré" : "");
 
         if (SaleReturn::where('sale_id', $id)->where('deleted_at', '=', null)->exists())
         {
@@ -646,7 +683,7 @@ class SalesController extends BaseController
             $order->is_pos = 0;
             $order->date = $request->date;
             $order->Ref = $this->getNumberOrder();
-            $order->statut = "completed";
+            $order->statut = $request->statut ?? "completed";
             $order->user_id = Auth::user()->id;
             $order->payment_statut = 'unpaid';
             $order->client_id = $request->client_id;
@@ -1933,7 +1970,6 @@ class SalesController extends BaseController
 
     public function My_Sale_PDF(Request $request, $id, $type)
     {
-
         $details = array();
         $helpers = new helpers();
         $sale_data = Sale::with('details.product.unitSale')
@@ -2030,9 +2066,11 @@ class SalesController extends BaseController
         $settings = Setting::where('deleted_at', '=', null)->first();
         $symbol = $helpers->Get_Currency_Code();
 
+        // dd($symbol, $settings, $sale, $details);
+
         $Html = view('pdf.sale_pdf', [
             'symbol' => $symbol,
-            'setting' => $settings,
+            'setting' => $settings->toArray(),
             'sale' => $sale,
             'details' => $details,
         ])->render();
@@ -2063,10 +2101,10 @@ class SalesController extends BaseController
        //get warehouses assigned to user
        $user_auth = auth()->user();
        if($user_auth->is_all_warehouses){
-           $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+           $warehouses = Warehouse::where('deleted_at', '=', null)->where('active', 1)->get(['id', 'name']);
        }else{
            $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-           $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
+           $warehouses = Warehouse::where('deleted_at', '=', null)->where('active', 1)->whereIn('id', $warehouses_id)->get(['id', 'name']);
        }
 
         $clients = Client::where('deleted_at', '=', null)->get(['id', 'name']);
@@ -2241,10 +2279,10 @@ class SalesController extends BaseController
          //get warehouses assigned to user
         $user_auth = auth()->user();
         if($user_auth->is_all_warehouses){
-            $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+            $warehouses = Warehouse::where('deleted_at', '=', null)->where('active', 1)->get(['id', 'name']);
         }else{
             $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-            $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
+            $warehouses = Warehouse::where('deleted_at', '=', null)->where('active', 1)->whereIn('id', $warehouses_id)->get(['id', 'name']);
         }
 
           $clients = Client::where('deleted_at', '=', null)->get(['id', 'name']);

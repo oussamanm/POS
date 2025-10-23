@@ -5,13 +5,12 @@
 
     <b-row v-if="!isLoading">
       <!-- ICON BG -->
-
       <b-col lg="3" md="6" sm="12">
         <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
           <i class="i-Full-Cart"></i>
           <div class="content">
-            <p class="text-muted mt-2 mb-0">{{$t('Sales')}}</p>
-            <p class="text-primary text-24 line-height-1 mb-2">{{client.total_sales}}</p>
+            <p class="text-muted mt-2 mb-0">{{$t('Sales')}}({{client.total_sales}})</p>
+            <p class="text-primary text-24 line-height-1 mb-2">{{formatNumber(client.total_amount, 2)}}</p>
           </div>
         </b-card>
       </b-col>
@@ -19,21 +18,21 @@
         <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
           <i class="i-Financial"></i>
           <div class="content">
-            <p class="text-muted mt-2 mb-0">{{$t('TotalAmount')}}</p>
+            <p class="text-muted mt-2 mb-0">{{$t('TotalPaid')}}</p>
             <p
               class="text-primary text-24 line-height-1 mb-2"
-            >{{currentUser.currency}} {{formatNumber((client.total_amount),2)}}</p>
+            >{{currentUser.currency}} {{formatNumber(client.total_payments, 2)}}</p>
           </div>
         </b-card>
       </b-col>
       <b-col lg="3" md="6" sm="12">
         <b-card class="card-icon-bg card-icon-bg-primary o-hidden mb-30 text-center">
-          <i class="i-Money-2"></i>
+          <i class="i-Left-4"></i>
           <div class="content">
-            <p class="text-muted mt-2 mb-0">{{$t('TotalPaid')}}</p>
+            <p class="text-muted mt-2 mb-0">Total Retour</p>
             <p
               class="text-primary text-24 line-height-1 mb-2"
-            >{{currentUser.currency}} {{formatNumber((client.total_paid),2)}}</p>
+            >{{currentUser.currency}} {{formatNumber(client.total_return, 2)}}</p>
           </div>
         </b-card>
       </b-col>
@@ -44,7 +43,7 @@
             <p class="text-muted mt-2 mb-0">{{$t('Due')}}</p>
             <p
               class="text-primary text-24 line-height-1 mb-2"
-            >{{currentUser.currency}} {{formatNumber((client.due),2)}}</p>
+            >{{currentUser.currency}} {{formatNumber(client.due, 2)}}</p>
           </div>
         </b-card>
       </b-col>
@@ -54,7 +53,7 @@
       <b-col md="12">
         <b-card class="card mb-30" header-bg-variant="transparent ">
           <b-tabs active-nav-item-class="nav nav-tabs" content-class="mt-3">
-           
+
             <!-- Sales Table -->
             <b-tab :title="$t('Sales')">
               <vue-good-table
@@ -221,17 +220,6 @@
                     <span v-else class="badge badge-outline-info">{{$t('Pending')}}</span>
                   </div>
 
-                  <div v-else-if="props.column.field == 'payment_status'">
-                    <span
-                      v-if="props.row.payment_status == 'paid'"
-                      class="badge badge-outline-success"
-                    >{{$t('Paid')}}</span>
-                    <span
-                      v-else-if="props.row.payment_status == 'partial'"
-                      class="badge badge-outline-primary"
-                    >{{$t('partial')}}</span>
-                    <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
-                  </div>
                   <div v-else-if="props.column.field == 'Ref'">
                     <router-link
                       :to="'/app/sale_return/detail/'+props.row.id"
@@ -386,7 +374,7 @@ export default {
           thClass: "text-left",
           sortable: false
         },
-       
+
         {
           label: this.$t("Customer"),
           field: "client_name",
@@ -477,7 +465,6 @@ export default {
           tdClass: "text-left",
           thClass: "text-left"
         },
-       
         {
           label: this.$t("Total"),
           field: "GrandTotal",
@@ -487,32 +474,8 @@ export default {
           sortable: false
         },
         {
-          label: this.$t("Paid"),
-          field: "paid_amount",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("Due"),
-          field: "due",
-          type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-         {
           label: this.$t("Status"),
           field: "statut",
-          html: true,
-          tdClass: "text-left",
-          thClass: "text-left",
-          sortable: false
-        },
-        {
-          label: this.$t("PaymentStatus"),
-          field: "payment_status",
           html: true,
           tdClass: "text-left",
           thClass: "text-left",
@@ -536,7 +499,7 @@ export default {
           thClass: "text-left",
           sortable: false
         },
-       
+
         {
           label: this.$t("Sale"),
           field: "Sale_Ref",
@@ -614,10 +577,7 @@ export default {
         { title: "sale_ref", dataKey: "sale_ref" },
         { title: "Warehouse", dataKey: "warehouse_name" },
         { title: "Total", dataKey: "GrandTotal" },
-        { title: "Paid", dataKey: "paid_amount" },
-        { title: "Due", dataKey: "due" },
         { title: "Status", dataKey: "statut" },
-        { title: "Status Payment", dataKey: "payment_status" }
       ];
       pdf.autoTable(columns, self.returns_customer);
       pdf.text("Sales Return List", 40, 25);

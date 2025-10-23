@@ -14,7 +14,7 @@
         @on-search="onSearch"
         :search-options="{
         enabled: true,
-        placeholder: $t('Search_this_table'),  
+        placeholder: $t('Search_this_table'),
       }"
         :pagination-options="{
         enabled: true,
@@ -320,6 +320,16 @@
               </validation-provider>
             </b-col>
 
+            <b-col md="12" sm="12" class="mb-5">
+                <div class="form-check">
+                    <label class="checkbox checkbox-outline-primary">
+                      <input type="checkbox" v-model="user.wholesale_price">
+                      <h5>Appliquer le prix de gros pour cet utilisateur</h5>
+                      <span class="checkmark"></span>
+                    </label>
+                  </div>
+            </b-col>
+
             <!-- assigned_warehouses -->
             <b-col md="4" sm="4" class="d-none">
               <h5>{{$t('Assigned_warehouses')}}</h5>
@@ -327,7 +337,7 @@
 
             <b-col md="8" sm="8" class="d-none">
               <label class="checkbox checkbox-primary mb-3"><input type="checkbox" v-model="user.is_all_warehouses"><h5>{{$t('All_Warehouses')}} <i v-b-tooltip.hover.bottom title="If 'All Warehouses' Selected , User Can access all data for the selected Warehouses" class="text-info font-weight-bold i-Speach-BubbleAsking"></i></h5><span class="checkmark"></span></label>
-               
+
                <b-form-group class="mt-2" :label="$t('Some_warehouses')">
                   <v-select
                     multiple
@@ -403,6 +413,7 @@ export default {
         role_id: "",
         avatar: "",
         is_all_warehouses:0,
+        wholesale_price:0,
       },
       assigned_warehouses:[],
     };
@@ -696,7 +707,7 @@ export default {
             });
     },
 
-        
+
     //------------------------------ Event Upload Avatar -------------------------------\\
     async onFileSelected(e) {
       const { valid } = await this.$refs.Avatar.validate(e);
@@ -720,6 +731,7 @@ export default {
       self.data.append("phone", self.user.phone);
       self.data.append("role", self.user.role_id);
       self.data.append("is_all_warehouses", self.user.is_all_warehouses);
+      self.data.append("wholesale_price", self.user.wholesale_price);
       self.data.append("avatar", self.user.avatar);
 
       // append array assigned_warehouses
@@ -765,6 +777,7 @@ export default {
       self.data.append("role", self.user.role_id);
       self.data.append("statut", self.user.statut);
       self.data.append("is_all_warehouses", self.user.is_all_warehouses);
+      self.data.append("wholesale_price", self.user.wholesale_price);
       self.data.append("avatar", self.user.avatar);
 
        // append array assigned_warehouses
@@ -812,6 +825,7 @@ export default {
         role_id: "",
         avatar: "",
         is_all_warehouses:0,
+        wholesale_price:0,
       };
       this.data= new FormData();
       this.assigned_warehouses = [];

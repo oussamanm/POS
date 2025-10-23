@@ -56,8 +56,8 @@
                         :state="errors[0] ? false : (valid ? true : null)"
                         v-model="expense.category_id"
                         :reduce="label => label.value"
-                        :placeholder="$t('Choose_Category')"
-                        :options="expense_Category.map(expense_Category => 
+                        placeholder="Choisissez le Categorie"
+                        :options="expense_Category.map(expense_Category =>
                         ({label: expense_Category.name, value: expense_Category.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>

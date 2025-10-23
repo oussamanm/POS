@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Models\User;
 use App\Models\UserWarehouse;
 use App\Models\Expense;
@@ -33,8 +34,8 @@ class ExpensesController extends BaseController
         $role = Auth::user()->roles()->first();
         $view_records = Role::findOrFail($role->id)->inRole('record_view');
         // Filter fields With Params to retrieve
-        $columns = array(0 => 'Ref', 1 => 'warehouse_id', 2 => 'date', 3 => 'expense_category_id');
-        $param = array(0 => 'like', 1 => '=', 2 => '=', 3 => '=');
+        $columns = array(0 => 'Ref', 1 => 'warehouse_id', 2 => 'expense_category_id');
+        $param = array(0 => 'like', 1 => '=', 2 => '=');
         $data = array();
 
         // Check If User Has Permission View  All Records
@@ -48,7 +49,7 @@ class ExpensesController extends BaseController
 
         //Multiple Filter
         $Filtred = $helpers->filter($Expenses, $columns, $param, $request)
-        //Search With Multiple Param
+            //Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
@@ -65,9 +66,19 @@ class ExpensesController extends BaseController
                             });
                         });
                 });
+            })
+            ->when(($request->date_from != "" || $request->date_to != ""), function ($query) use ($request) {
+                if ($request->date_from != "" && $request->date_to != "")
+                    return $query->whereBetween('date', [$request->date_from, $request->date_to]);
+                else
+                {
+                    if ($request->date_from != "")
+                        return $query->where('date', '=', $request->date_from);
+                }
             });
+
         $totalRows = $Filtred->count();
-        if($perPage == "-1"){
+        if ($perPage == "-1") {
             $perPage = $totalRows;
         }
         $Expenses = $Filtred->offset($offSet)
@@ -89,14 +100,14 @@ class ExpensesController extends BaseController
 
         $Expenses_category = ExpenseCategory::where('deleted_at', '=', null)->get(['id', 'name']);
 
-          //get warehouses assigned to user
-          $user_auth = auth()->user();
-          if($user_auth->is_all_warehouses){
-             $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
-          }else{
-             $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-             $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
-          }
+        //get warehouses assigned to user
+        $user_auth = auth()->user();
+        if ($user_auth->is_all_warehouses)
+            $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+        else {
+            $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
+            $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
+        }
 
         return response()->json([
             'expenses' => $data,
@@ -104,7 +115,6 @@ class ExpensesController extends BaseController
             'warehouses' => $warehouses,
             'totalRows' => $totalRows,
         ]);
-
     }
 
     //-------------- Store New Expense -----------\\
@@ -136,10 +146,11 @@ class ExpensesController extends BaseController
 
     //------------ function show -----------\\
 
-    public function show($id){
+    public function show($id)
+    {
         //
-        
-        }
+
+    }
 
     //-------------- Update  Expense -----------\\
 
@@ -238,7 +249,6 @@ class ExpensesController extends BaseController
             $code = 'EXP_1111';
         }
         return $code;
-
     }
 
 
@@ -251,9 +261,9 @@ class ExpensesController extends BaseController
 
         //get warehouses assigned to user
         $user_auth = auth()->user();
-        if($user_auth->is_all_warehouses){
+        if ($user_auth->is_all_warehouses) {
             $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
-        }else{
+        } else {
             $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
             $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
         }
@@ -285,7 +295,8 @@ class ExpensesController extends BaseController
         if ($Expense->warehouse_id) {
             if (Warehouse::where('id', $Expense->warehouse_id)
                 ->where('deleted_at', '=', null)
-                ->first()) {
+                ->first()
+            ) {
                 $data['warehouse_id'] = $Expense->warehouse_id;
             } else {
                 $data['warehouse_id'] = '';
@@ -297,7 +308,8 @@ class ExpensesController extends BaseController
         if ($Expense->expense_category_id) {
             if (ExpenseCategory::where('id', $Expense->expense_category_id)
                 ->where('deleted_at', '=', null)
-                ->first()) {
+                ->first()
+            ) {
                 $data['category_id'] = $Expense->expense_category_id;
             } else {
                 $data['category_id'] = '';
@@ -312,9 +324,9 @@ class ExpensesController extends BaseController
 
         //get warehouses assigned to user
         $user_auth = auth()->user();
-        if($user_auth->is_all_warehouses){
+        if ($user_auth->is_all_warehouses) {
             $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
-        }else{
+        } else {
             $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
             $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
         }
@@ -327,5 +339,4 @@ class ExpensesController extends BaseController
             'warehouses' => $warehouses,
         ]);
     }
-
 }

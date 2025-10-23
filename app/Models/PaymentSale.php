@@ -11,7 +11,7 @@ class PaymentSale extends Model
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
-        'sale_id', 'date', 'montant', 'Ref','change', 'Reglement', 'user_id', 'notes', 'payment_received',
+        'sale_id', 'date', 'montant', 'Ref','change', 'Reglement', 'user_id', 'client_id', 'notes', 'payment_received',
     ];
 
     protected $casts = [
@@ -19,6 +19,7 @@ class PaymentSale extends Model
         'change'  => 'double',
         'sale_id' => 'integer',
         'user_id' => 'integer',
+        'client_id' => 'integer',
     ];
 
     public function user()
@@ -29,6 +30,11 @@ class PaymentSale extends Model
     public function sale()
     {
         return $this->belongsTo('App\Models\Sale');
+    }
+
+    public function client()
+    {
+        return $this->belongsTo('App\Models\Client');
     }
 
 }

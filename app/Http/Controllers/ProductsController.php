@@ -29,7 +29,6 @@ use \Gumlet\ImageResize;
 use Illuminate\Support\Facades\Auth;
 use App\Exports\StockExport;
 use Illuminate\Support\Facades\File;
-
 use function PHPUnit\Framework\isNull;
 
 class ProductsController extends BaseController
@@ -99,6 +98,7 @@ class ProductsController extends BaseController
                 $item['type']  = 'Single';
                 $item['cost']  = number_format($product->cost, 2, '.', ',');
                 $item['price'] = number_format($product->price, 2, '.', ',');
+                $item['wholesale_price'] = number_format($product->wholesale_price, 2, '.', ',');
                 $item['unit'] = $product['unit']->ShortName;
 
               $product_warehouse_total_qty = product_warehouse::where('product_id', $product->id)
@@ -362,7 +362,6 @@ class ProductsController extends BaseController
         $order = $request->SortField;
         $dir = $request->SortType;
 
-
         $products = Product::where('products.deleted_at', '=', null)->where('products.not_selling', '=', 0);
 
         // Get user warehouse
@@ -398,11 +397,20 @@ class ProductsController extends BaseController
                         ->where('product_warehouse.deleted_at', '=', null)
                         ->where('warehouse_id', $warehouse_id);
             })
-            ->select(['products.id','products.category_id', 'unit_id', 'brand_id', 'products.code', 'products.name', 'ar_name', 'image', 'cost', 'price', 'min_price', 'tax_method', 'TaxNet', 'unit_purchase_id', DB::raw('SUM(qte) as qte')])
+            ->select(['products.id','products.category_id', 'unit_id', 'brand_id', 'products.code', 'products.name', 'ar_name', 'image', 'cost', 'price', 'min_price', 'wholesale_price', 'tax_method', 'TaxNet', 'unit_purchase_id', DB::raw('SUM(qte) as qte')])
             ->groupBy('products.id')
             ->havingRaw('qte > 0')
             ->paginate($limit);
 
+        // if user has column wholesale_price=1 change price to wholesale_price
+        if ($current_user->wholesale_price == 1)
+        {
+            foreach ($products as $product)
+            {
+                if ($product->wholesale_price && $product->wholesale_price > 0)
+                    $product->price = $product->wholesale_price;
+            }
+        }
 
         return response()->json([
             'status' => true,
@@ -653,6 +661,7 @@ class ProductsController extends BaseController
                 'unit_id'      => Rule::requiredIf($request->type != 'is_service'),
                 'cost'         => Rule::requiredIf($request->type == 'is_single'),
                 'price'        => Rule::requiredIf($request->type != 'is_variant'),
+                'wholesale_price' => '',
             ];
 
 
@@ -807,6 +816,7 @@ class ProductsController extends BaseController
                  if($request['type'] == 'is_single')
                  {
                     $Product->price = $request['price'];
+                    $Product->wholesale_price = $request['wholesale_price'];
                     $Product->min_price = $request['min_price'];
                     $Product->cost  = $request['cost'];
 
@@ -958,6 +968,7 @@ class ProductsController extends BaseController
                 'unit_id'     => Rule::requiredIf($request->type != 'is_service'),
                 'cost'        => Rule::requiredIf($request->type == 'is_single'),
                 'price'       => Rule::requiredIf($request->type != 'is_variant'),
+                'wholesale_price'       => '',
             ];
 
 
@@ -1116,6 +1127,7 @@ class ProductsController extends BaseController
                  //-- check if type is_single
                  if($request['type'] == 'is_single'){
                     $Product->price = $request['price'];
+                    $Product->wholesale_price = $request['wholesale_price'];
                     $Product->min_price = $request['min_price'];
                     $Product->cost  = $request['cost'];
 
@@ -1467,11 +1479,16 @@ class ProductsController extends BaseController
         // }
         // else
         if($user_auth->is_all_warehouses)
-            $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+            $warehouses = Warehouse::whereNull('deleted_at')->where('active', 1)->get(['id', 'name']);
+        else if ($user_auth->role_id === 4)
+        {
+            $warehouses_id = [1];
+            $warehouses = Warehouse::whereNull('deleted_at')->where('active', 1)->whereIn('id', $warehouses_id)->get(['id', 'name']);
+        }
         else
         {
             $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-            $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
+            $warehouses = Warehouse::whereNull('deleted_at')->where('active', 1)->whereIn('id', $warehouses_id)->get(['id', 'name']);
         }
 
         $item['id'] = $Product->id;
@@ -1485,6 +1502,7 @@ class ProductsController extends BaseController
         $item['brand'] = $Product['brand'] ? $Product['brand']->name : 'N/D';
         $item['price'] = $Product->price;
         $item['min_price'] = $Product->min_price;
+        $item['wholesale_price'] = $Product->wholesale_price;
         $item['cost'] = $Product->cost;
         $item['stock_alert'] = $Product->stock_alert;
         $item['taxe'] = $Product->TaxNet;
@@ -2074,6 +2092,7 @@ class ProductsController extends BaseController
 
         $item['tax_method'] = $Product->tax_method;
         $item['price'] = $Product->price;
+        $item['wholesale_price'] = $Product->wholesale_price;
         $item['min_price'] = $Product->min_price;
         $item['cost'] = $Product->cost;
         $item['stock_alert'] = $Product->stock_alert;

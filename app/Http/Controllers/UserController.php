@@ -127,11 +127,11 @@ class UserController extends BaseController
         }
 
     }
-    
+
     public function getVendeurs(Request $request)
     {
-        $vendors = User::select(['id', 'name'])->where('role_id', 2)->orWhere('id', 1)->get();
-        
+        $vendors = User::select(['id', 'name', 'wholesale_price'])->where('role_id', 2)->orWhere('id', 1)->get();
+
         if (empty($vendors) || is_null($vendors))
         {
             return response()->json([
@@ -139,7 +139,9 @@ class UserController extends BaseController
              'data' => null,
             ]);
         }
-        
+
+        $vendors = $vendors->where('statut', 1);
+
         return response()->json(['success' => true, 'data' => $vendors]);
     }
 
@@ -185,7 +187,7 @@ class UserController extends BaseController
         }
         return $Warehouse->id;
     }
-    
+
     public function store(Request $request)
     {
         $this->authorizeForUser($request->user('api'), 'create', User::class);
@@ -195,7 +197,8 @@ class UserController extends BaseController
             'email.unique' => 'This Email already taken.',
         ]);
         \DB::transaction(function () use ($request) {
-            if ($request->hasFile('avatar')) {
+            if ($request->hasFile('avatar'))
+            {
 
                 $image = $request->file('avatar');
                 $filename = rand(11111111, 99999999) . $image->getClientOriginalName();
@@ -204,18 +207,17 @@ class UserController extends BaseController
                 $image_resize->resize(128, 128);
                 $image_resize->save(public_path('/images/avatar/' . $filename));
 
-            } else {
+            }
+            else
                 $filename = 'no_avatar.png';
-            }
 
-            if($request['is_all_warehouses'] == '1' || $request['is_all_warehouses'] == 'true'){
+
+            if($request['is_all_warehouses'] == '1' || $request['is_all_warehouses'] == 'true')
                 $is_all_warehouses = 1;
-            }else{
+            else
                 $is_all_warehouses = 0;
-            }
-            $is_all_warehouses = 0;
 
-            
+            $is_all_warehouses = 0;
 
             $User = new User;
             $User->firstname = $request['firstname'];
@@ -227,13 +229,14 @@ class UserController extends BaseController
             $User->avatar    = $filename;
             $User->role_id   = $request['role'];
             $User->is_all_warehouses   = $is_all_warehouses;
+            $User->wholesale_price   = ($request['wholesale_price'] === "true" || $request['wholesale_price'] === true) ? 1 : 0;
 
             if (Role::find($request['role'])->name == 'Vendeur'){
                 $vendor_warehouse = self::store_warehouse($request['firstname'] . " " . $request['lastname']);
                 $request['assigned_to'] = [1, $vendor_warehouse];
                 $User->warehouse = $vendor_warehouse;
             }
-            else if(Role::find($request['role'])->name == 'Owner')
+            else if(Role::find($request['role'])->name == 'Gérant')
                 $request['assigned_to'] = [1];
 
             $User->save();
@@ -241,13 +244,13 @@ class UserController extends BaseController
             $role_user = new role_user;
             $role_user->user_id = $User->id;
             $role_user->role_id = $request['role'];
-            
+
             $role_user->save();
 
             if(!$User->is_all_warehouses){
                 $User->assignedWarehouses()->sync($request['assigned_to']);
             }
-    
+
         }, 10);
 
         return response()->json(['success' => true]);
@@ -255,8 +258,9 @@ class UserController extends BaseController
 
     //------------ function show -----------\\
 
-    public function show($id){
-        
+    public function show($id)
+    {
+
     }
 
     public function edit(Request $request, $id)
@@ -274,9 +278,9 @@ class UserController extends BaseController
     //------------- UPDATE  USER ---------\\
 
     public function update(Request $request, $id)
-    {        
+    {
         $this->authorizeForUser($request->user('api'), 'update', User::class);
-        
+
         $this->validate($request, [
             'email' => 'required|email|unique:users',
             'email' => Rule::unique('users')->ignore($id),
@@ -288,16 +292,15 @@ class UserController extends BaseController
             $user = User::findOrFail($id);
             $current = $user->password;
 
-            if ($request->NewPassword != 'null') {
-                if ($request->NewPassword != $current) {
+            if ($request->NewPassword != 'null')
+            {
+                if ($request->NewPassword != $current)
                     $pass = Hash::make($request->NewPassword);
-                } else {
+                else
                     $pass = $user->password;
-                }
-
-            } else {
-                $pass = $user->password;
             }
+            else
+                $pass = $user->password;
 
             $currentAvatar = $user->avatar;
             if ($request->avatar != $currentAvatar) {
@@ -316,20 +319,23 @@ class UserController extends BaseController
                         @unlink($userPhoto);
                     }
                 }
-            } else {
+            }
+            else
                 $filename = $currentAvatar;
-            }
 
-            if($request['is_all_warehouses'] == '1' || $request['is_all_warehouses'] == 'true'){
+            if($request['is_all_warehouses'] == '1' || $request['is_all_warehouses'] == 'true')
                 $is_all_warehouses = 1;
-            }else{
+            else
                 $is_all_warehouses = 0;
-            }
 
-            if (Role::find($user->role_id)->name == "Vendeur"){
-                Warehouse::whereId($user->warehouse)->update([
-                    'name' => $request['firstname'] . " " . $request['lastname'],
-                ]);
+            if (Role::find($user->role_id)->name == "Vendeur")
+            {
+                $data = ['name' => $request['firstname'] . " " . $request['lastname']];
+
+                if (isset($request['statut']))
+                    $data['active'] = $request['statut'];
+
+                Warehouse::whereId($user->warehouse)->update($data);
             }
 
             User::whereId($id)->update([
@@ -342,6 +348,7 @@ class UserController extends BaseController
                 'avatar' => $filename,
                 'statut' => $request['statut'],
                 'is_all_warehouses' => $is_all_warehouses,
+                'wholesale_price' => ($request['wholesale_price'] === "true" || $request['wholesale_price'] === true) ? 1 : 0,
                 // 'role_id' => $request['role'],
             ]);
 
@@ -354,7 +361,7 @@ class UserController extends BaseController
             $user_saved->assignedWarehouses()->sync($request['assigned_to']);
 
         }, 10);
-        
+
         return response()->json(['success' => true]);
 
     }

@@ -4,7 +4,7 @@
     'name' => 'Stockly by Mediaplus',
     'env' => 'local',
     'debug' => true,
-    'url' => '/',
+    'url' => 'https://pos.mediaplus.ma',
     'asset_url' => NULL,
     'timezone' => 'Africa/Casablanca',
     'locale' => 'en',
@@ -148,12 +148,12 @@
         array (
           'include' => 
           array (
-            0 => '/www/wwwroot/mediaplus.ma/Dev_Pos',
+            0 => '/www/wwwroot/mediaplus.ma/Pos',
           ),
           'exclude' => 
           array (
-            0 => '/www/wwwroot/mediaplus.ma/Dev_Pos/vendor',
-            1 => '/www/wwwroot/mediaplus.ma/Dev_Pos/node_modules',
+            0 => '/www/wwwroot/mediaplus.ma/Pos/vendor',
+            1 => '/www/wwwroot/mediaplus.ma/Pos/node_modules',
           ),
           'follow_links' => false,
           'ignore_unreadable_directories' => false,
@@ -172,7 +172,7 @@
           0 => 'local',
         ),
       ),
-      'temporary_directory' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/app/backup-temp',
+      'temporary_directory' => '/www/wwwroot/mediaplus.ma/Pos/storage/app/backup-temp',
     ),
     'notifications' => 
     array (
@@ -283,7 +283,7 @@
       'file' => 
       array (
         'driver' => 'file',
-        'path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/framework/cache/data',
+        'path' => '/www/wwwroot/mediaplus.ma/Pos/storage/framework/cache/data',
       ),
       'memcached' => 
       array (
@@ -341,9 +341,9 @@
         'url' => NULL,
         'host' => '127.0.0.1',
         'port' => '3306',
-        'database' => 'dev_pos',
-        'username' => 'dev_pos',
-        'password' => 'HKPF3TMzEGcWREMr',
+        'database' => 'sql_pos_ma',
+        'username' => 'sql_pos_ma',
+        'password' => 'KXiFFYT3BMap6XCW',
         'charset' => 'utf8mb4',
         'strict' => false,
         'engine' => 'InnoDB',
@@ -357,9 +357,9 @@
         'url' => NULL,
         'host' => '127.0.0.1',
         'port' => '3306',
-        'database' => 'dev_pos',
-        'username' => 'dev_pos',
-        'password' => 'HKPF3TMzEGcWREMr',
+        'database' => 'sql_pos_ma',
+        'username' => 'sql_pos_ma',
+        'password' => 'KXiFFYT3BMap6XCW',
         'charset' => 'utf8',
         'prefix' => '',
         'prefix_indexes' => true,
@@ -372,9 +372,9 @@
         'url' => NULL,
         'host' => '127.0.0.1',
         'port' => '3306',
-        'database' => 'dev_pos',
-        'username' => 'dev_pos',
-        'password' => 'HKPF3TMzEGcWREMr',
+        'database' => 'sql_pos_ma',
+        'username' => 'sql_pos_ma',
+        'password' => 'KXiFFYT3BMap6XCW',
         'charset' => 'utf8',
         'prefix' => '',
         'prefix_indexes' => true,
@@ -495,18 +495,18 @@
       'local' => 
       array (
         'driver' => 'local',
-        'root' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/app',
+        'root' => '/www/wwwroot/mediaplus.ma/Pos/storage/app',
       ),
       'snapshots' => 
       array (
         'driver' => 'local',
-        'root' => '/www/wwwroot/mediaplus.ma/Dev_Pos/database/snapshots',
+        'root' => '/www/wwwroot/mediaplus.ma/Pos/database/snapshots',
       ),
       'public' => 
       array (
         'driver' => 'local',
-        'root' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/app/public',
-        'url' => '//storage',
+        'root' => '/www/wwwroot/mediaplus.ma/Pos/storage/app/public',
+        'url' => 'https://pos.mediaplus.ma/storage',
         'visibility' => 'public',
       ),
       's3' => 
@@ -521,7 +521,7 @@
     ),
     'links' => 
     array (
-      '/www/wwwroot/mediaplus.ma/Dev_Pos/public/storage' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/app/public',
+      '/www/wwwroot/mediaplus.ma/Pos/public/storage' => '/www/wwwroot/mediaplus.ma/Pos/storage/app/public',
     ),
   ),
   'hashing' => 
@@ -540,7 +540,7 @@
   ),
   'laraupdater' => 
   array (
-    'tmp_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/app',
+    'tmp_path' => '/www/wwwroot/mediaplus.ma/Pos/storage/app',
     'update_baseurl' => '',
     'middleware' => 
     array (
@@ -566,13 +566,13 @@
       'single' => 
       array (
         'driver' => 'single',
-        'path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/logs/laravel.log',
+        'path' => '/www/wwwroot/mediaplus.ma/Pos/storage/logs/laravel.log',
         'level' => 'debug',
       ),
       'daily' => 
       array (
         'driver' => 'daily',
-        'path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/logs/laravel.log',
+        'path' => '/www/wwwroot/mediaplus.ma/Pos/storage/logs/laravel.log',
         'level' => 'debug',
         'days' => 14,
       ),
@@ -622,11 +622,11 @@
       ),
       'emergency' => 
       array (
-        'path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/logs/laravel.log',
+        'path' => '/www/wwwroot/mediaplus.ma/Pos/storage/logs/laravel.log',
       ),
       'myApiLog' => 
       array (
-        'path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/logs/myApiLog_2025-01-07.log',
+        'path' => '/www/wwwroot/mediaplus.ma/Pos/storage/logs/myApiLog_2025-02-17.log',
         'driver' => 'single',
         'level' => 'debug',
       ),
@@ -669,7 +669,7 @@
       'theme' => 'default',
       'paths' => 
       array (
-        0 => '/www/wwwroot/mediaplus.ma/Dev_Pos/resources/views/vendor/mail',
+        0 => '/www/wwwroot/mediaplus.ma/Pos/resources/views/vendor/mail',
       ),
     ),
   ),
@@ -762,7 +762,7 @@
     'lifetime' => '120',
     'expire_on_close' => false,
     'encrypt' => false,
-    'files' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/framework/sessions',
+    'files' => '/www/wwwroot/mediaplus.ma/Pos/storage/framework/sessions',
     'connection' => NULL,
     'table' => 'sessions',
     'store' => NULL,
@@ -782,9 +782,9 @@
   array (
     'paths' => 
     array (
-      0 => '/www/wwwroot/mediaplus.ma/Dev_Pos/resources/views',
+      0 => '/www/wwwroot/mediaplus.ma/Pos/resources/views',
     ),
-    'compiled' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/framework/views',
+    'compiled' => '/www/wwwroot/mediaplus.ma/Pos/storage/framework/views',
   ),
   'dompdf' => 
   array (
@@ -792,10 +792,10 @@
     'orientation' => 'portrait',
     'defines' => 
     array (
-      'font_dir' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/fonts/',
-      'font_cache' => '/www/wwwroot/mediaplus.ma/Dev_Pos/storage/fonts/',
+      'font_dir' => '/www/wwwroot/mediaplus.ma/Pos/storage/fonts/',
+      'font_cache' => '/www/wwwroot/mediaplus.ma/Pos/storage/fonts/',
       'temp_dir' => '/tmp',
-      'chroot' => '/www/wwwroot/mediaplus.ma/Dev_Pos',
+      'chroot' => '/www/wwwroot/mediaplus.ma/Pos',
       'enable_font_subsetting' => false,
       'pdf_backend' => 'CPDF',
       'default_media_type' => 'screen',
@@ -877,7 +877,7 @@
     'stubs' => 
     array (
       'enabled' => false,
-      'path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/vendor/nwidart/laravel-modules/src/Commands/stubs',
+      'path' => '/www/wwwroot/mediaplus.ma/Pos/vendor/nwidart/laravel-modules/src/Commands/stubs',
       'files' => 
       array (
         'routes/web' => 'Routes/web.php',
@@ -941,9 +941,9 @@
     ),
     'paths' => 
     array (
-      'modules' => '/www/wwwroot/mediaplus.ma/Dev_Pos/Modules',
-      'assets' => '/www/wwwroot/mediaplus.ma/Dev_Pos/public/modules',
-      'migration' => '/www/wwwroot/mediaplus.ma/Dev_Pos/database/migrations',
+      'modules' => '/www/wwwroot/mediaplus.ma/Pos/Modules',
+      'assets' => '/www/wwwroot/mediaplus.ma/Pos/public/modules',
+      'migration' => '/www/wwwroot/mediaplus.ma/Pos/database/migrations',
       'generator' => 
       array (
         'config' => 
@@ -1136,7 +1136,7 @@
       'enabled' => false,
       'paths' => 
       array (
-        0 => '/www/wwwroot/mediaplus.ma/Dev_Pos/vendor/*/*',
+        0 => '/www/wwwroot/mediaplus.ma/Pos/vendor/*/*',
       ),
     ),
     'composer' => 
@@ -1165,7 +1165,7 @@
       'file' => 
       array (
         'class' => 'Nwidart\\Modules\\Activators\\FileActivator',
-        'statuses-file' => '/www/wwwroot/mediaplus.ma/Dev_Pos/modules_statuses.json',
+        'statuses-file' => '/www/wwwroot/mediaplus.ma/Pos/modules_statuses.json',
         'cache-key' => 'activator.installed',
         'cache-lifetime' => 604800,
       ),
@@ -1176,18 +1176,18 @@
   array (
     'config' => 
     array (
-      'model_template_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/model.txt',
-      'scaffold_model_template_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/scaffolding/model.txt',
-      'controller_template_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/controller.txt',
-      'scaffold_controller_template_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/scaffolding/controller.txt',
-      'migration_template_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/migration.txt',
-      'seed_template_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/seed.txt',
-      'view_template_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/view.txt',
-      'model_target_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/app',
-      'controller_target_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/app/Http/Controllers',
-      'migration_target_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/database/migrations',
-      'seed_target_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/database/seeds',
-      'view_target_path' => '/www/wwwroot/mediaplus.ma/Dev_Pos/resources/views',
+      'model_template_path' => '/www/wwwroot/mediaplus.ma/Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/model.txt',
+      'scaffold_model_template_path' => '/www/wwwroot/mediaplus.ma/Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/scaffolding/model.txt',
+      'controller_template_path' => '/www/wwwroot/mediaplus.ma/Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/controller.txt',
+      'scaffold_controller_template_path' => '/www/wwwroot/mediaplus.ma/Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/scaffolding/controller.txt',
+      'migration_template_path' => '/www/wwwroot/mediaplus.ma/Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/migration.txt',
+      'seed_template_path' => '/www/wwwroot/mediaplus.ma/Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/seed.txt',
+      'view_template_path' => '/www/wwwroot/mediaplus.ma/Pos/vendor/oscarafdev/laravel-4-generators/src/Way/Generators/Templates/view.txt',
+      'model_target_path' => '/www/wwwroot/mediaplus.ma/Pos/app',
+      'controller_target_path' => '/www/wwwroot/mediaplus.ma/Pos/app/Http/Controllers',
+      'migration_target_path' => '/www/wwwroot/mediaplus.ma/Pos/database/migrations',
+      'seed_target_path' => '/www/wwwroot/mediaplus.ma/Pos/database/seeds',
+      'view_target_path' => '/www/wwwroot/mediaplus.ma/Pos/resources/views',
     ),
   ),
   'trustedproxy' => 

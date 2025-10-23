@@ -52,39 +52,27 @@ class ClientController extends BaseController
                 });
             });
         $totalRows = $Filtred->count();
-        if($perPage == "-1"){
+        if($perPage == "-1")
             $perPage = $totalRows;
-        }
+
         $clients = $Filtred->offset($offSet)
             ->limit($perPage)
             ->orderBy($order, $dir)
             ->get();
 
-        foreach ($clients as $client) {
-
-            $item['total_amount'] = DB::table('sales')
-                ->where('deleted_at', '=', null)
+        foreach ($clients as $client)
+        {
+            $sales = Sale::where('deleted_at', '=', null)
                 ->where('client_id', $client->id)
-                ->sum('GrandTotal');
+                ->select(['id','client_id','GrandTotal', 'paid_amount'])
+                ->get();
 
-            $item['total_paid'] = DB::table('sales')
-                ->where('sales.deleted_at', '=', null)
-                ->where('sales.client_id', $client->id)
-                ->sum('paid_amount');
+            // total sales
+            $item['total_sales'] = $sales->sum('GrandTotal');
+            $item['total_payments'] = PaymentSale::whereNull('deleted_at')->where('client_id', $client->id)->whereNotNull('sale_id')->sum('montant') ?? 0;
+            $item['total_return'] = PaymentSale::whereNull('deleted_at')->where('client_id', $client->id)->whereNull('sale_id')->sum('montant') ?? 0;
 
-            $item['due'] = $item['total_amount'] - $item['total_paid'];
-
-            $item['total_amount_return'] = DB::table('sale_returns')
-                ->where('deleted_at', '=', null)
-                ->where('client_id', $client->id)
-                ->sum('GrandTotal');
-
-            $item['total_paid_return'] = DB::table('sale_returns')
-                ->where('sale_returns.deleted_at', '=', null)
-                ->where('sale_returns.client_id', $client->id)
-                ->sum('paid_amount');
-
-            $item['return_Due'] = $item['total_amount_return'] - $item['total_paid_return'];
+            $item['due'] = $item['total_sales'] - $item['total_payments'] - $item['total_return'];
 
             $item['id'] = $client->id;
             $item['name'] = $client->name;
@@ -96,6 +84,9 @@ class ClientController extends BaseController
             $item['city'] = $client->city;
             $item['adresse'] = $client->adresse;
             $item['localisation'] = $client->localisation;
+            $item['zone'] = $client->zone;
+            $item['strict_credit'] = $client->strict_credit;
+            $item['max_credit'] = $client->max_credit;
 
             if ($client->user)
                 $client->user->fullname = $client->user->firstname . " " . $client->user->lastname;
@@ -103,7 +94,7 @@ class ClientController extends BaseController
             $data[] = $item;
         }
         $company_info = Setting::where('deleted_at', '=', null)->first();
-        $vendors = User::where('role_id', 2)->orWhere('id', 1)->get();
+        $vendors = User::whereIn('role_id', [2, 4])->orWhere('id', 1)->get();
         return response()->json([
             'clients' => $data,
             'company_info' => $company_info,
@@ -127,12 +118,10 @@ class ClientController extends BaseController
         $dir = $request->SortType;
 
         $data = array();
+        $clients = Client::select(['id','code','name','phone', 'city','localisation','tax_number', 'adresse', 'zone', 'strict_credit', 'max_credit'])->whereNull('deleted_at');
 
-        if (empty($current_user) || $current_user->role_id === 1)
-            $clients = Client::select(['id','code','name','phone', 'city','localisation','tax_number', 'adresse'])->where('deleted_at', '=', null);
-        else
-            $clients = Client::select(['id','code','name','phone', 'city','localisation', 'tax_number', 'adresse'])->where('deleted_at', '=', null)
-                ->where('id_user', $current_user->id);
+        if (empty($current_user) || $current_user->role_id == 2 || $current_user->role_id == 4)
+            $clients = $clients->where('id_user', $current_user->id);
 
         // Search With Multiple Param
         if (!empty($request->search) && $request->search != "")
@@ -155,29 +144,17 @@ class ClientController extends BaseController
 
         foreach ($clients as $client)
         {
-            $item['total_amount'] = DB::table('sales')
-                ->where('deleted_at', '=', null)
+            $sales = Sale::whereNull('deleted_at')
                 ->where('client_id', $client->id)
-                ->sum('GrandTotal');
+                ->select(['id','client_id','GrandTotal', 'paid_amount'])
+                ->get();
 
-            $item['total_paid'] = DB::table('sales')
-                ->where('sales.deleted_at', '=', null)
-                ->where('sales.client_id', $client->id)
-                ->sum('paid_amount');
+            // total sales
+            $item['total_sales'] = $sales->sum('GrandTotal');
+            $item['total_payments'] = PaymentSale::whereNull('deleted_at')->where('client_id', $client->id)->whereNotNull('sale_id')->sum('montant') ?? 0;
+            $item['total_return'] = PaymentSale::whereNull('deleted_at')->where('client_id', $client->id)->whereNull('sale_id')->sum('montant') ?? 0;
 
-            $item['due'] = $item['total_amount'] - $item['total_paid'];
-
-            $item['total_amount_return'] = DB::table('sale_returns')
-                ->where('deleted_at', '=', null)
-                ->where('client_id', $client->id)
-                ->sum('GrandTotal');
-
-            $item['total_paid_return'] = DB::table('sale_returns')
-                ->where('sale_returns.deleted_at', '=', null)
-                ->where('sale_returns.client_id', $client->id)
-                ->sum('paid_amount');
-
-            $item['return_Due'] = $item['total_amount_return'] - $item['total_paid_return'];
+            $item['due'] = $item['total_sales'] - $item['total_payments'] - $item['total_return'];
 
             $item['id'] = $client->id;
             $item['localisation'] = $client->localisation;
@@ -187,6 +164,9 @@ class ClientController extends BaseController
             $item['code'] = $client->code;
             $item['city'] = $client->city;
             $item['tax_number'] = $client->tax_number;
+            $item['zone'] = $client->zone;
+            $item['strict_credit'] = $client->strict_credit;
+            $item['max_credit'] = $client->max_credit;
 
             $data[] = $item;
         }
@@ -214,31 +194,19 @@ class ClientController extends BaseController
         $clients = $clients->orderBy('name', 'asc')->get();
 
 
-        foreach ($clients as $client){
-
-            $item['total_amount'] = DB::table('sales')
-                ->where('deleted_at', '=', null)
+        foreach ($clients as $client)
+        {
+            $sales = Sale::where('deleted_at', '=', null)
                 ->where('client_id', $client->id)
-                ->sum('GrandTotal');
+                ->select(['id','client_id','GrandTotal', 'paid_amount'])
+                ->get();
 
-            $item['total_paid'] = DB::table('sales')
-                ->where('sales.deleted_at', '=', null)
-                ->where('sales.client_id', $client->id)
-                ->sum('paid_amount');
+            // total sales
+            $item['total_amount'] = $sales->sum('GrandTotal');
+            $item['total_paid'] = PaymentSale::whereNull('deleted_at')->where('client_id', $client->id)->whereNotNull('sale_id')->sum('montant') ?? 0;
+            $item['total_paid_return'] = PaymentSale::whereNull('deleted_at')->where('client_id', $client->id)->whereNull('sale_id')->sum('montant') ?? 0;
 
-            $item['due'] = $item['total_amount'] - $item['total_paid'];
-
-            $item['total_amount_return'] = DB::table('sale_returns')
-                ->where('deleted_at', '=', null)
-                ->where('client_id', $client->id)
-                ->sum('GrandTotal');
-
-            $item['total_paid_return'] = DB::table('sale_returns')
-                ->where('sale_returns.deleted_at', '=', null)
-                ->where('sale_returns.client_id', $client->id)
-                ->sum('paid_amount');
-
-            $item['return_Due'] = $item['total_amount_return'] - $item['total_paid_return'];
+            $item['due'] = $item['total_amount'] - $item['total_paid'] - $item['total_paid_return'];
 
             $item['id'] = $client->id;
             $item['name'] = $client->name;
@@ -274,31 +242,9 @@ class ClientController extends BaseController
              ]);
         }
 
-        /////----- retrieve list of sales
-
-        // check if user has permission to view all data
-        $Role = Auth::user()->roles()->first();
-        $ShowRecord = Role::findOrFail($Role->id)->inRole('record_view');
-
-        // retrieve warehouses for user
-        $warehouses = Auth::user()->assignedWarehouses()->pluck('id')->toArray();
-
-        $current_user = Auth::user()->id;
-
-        $current_date = Carbon::now();
-
-        // get sales
-        $sales = Sale::with('warehouse')
-            ->where('deleted_at', '=', null)
-            // ->when(($Role->id !== 1 && $current_user->warehouse !== null), function ($q) use ($current_user) {
-            //     return $query->where('warehouse_id', '=', $current_user->warehouse);
-            // })
-            // ->whereIn('warehouse_id', $warehouses)
-            // ->where(function ($query) use ($ShowRecord) {
-            //     if (!$ShowRecord) {
-            //         return $query->where('user_id', '=', $current_user);
-            //     }
-            // })
+        /////-----  list sales
+        $sales = Sale::
+            where('deleted_at', '=', null)
             ->where('client_id', $id)
             ->select([
                 'id',
@@ -314,10 +260,10 @@ class ClientController extends BaseController
                 'created_at',
                 DB::raw('(CASE WHEN payment_statut = "unpaid" AND DATEDIFF(NOW(), date) > 30 THEN true ELSE false end) as passed_month')
             ])
-            ->limit(30)->get()->toArray();
+            ->limit(30)
+        ->get()->toArray();
 
-        /////----- retrieve list of Payments
-
+        /////-----  list of Payments
         $payments = PaymentSale::
             with('sale.client')
             ->select(
@@ -329,31 +275,35 @@ class ClientController extends BaseController
                 DB::raw('SUM(montant) as total_payment')
             )
             ->groupBy('Ref')
-            ->whereNull('deleted_at')
+            ->whereNull('payment_sales.deleted_at')
             ->join('sales', 'payment_sales.sale_id', '=', 'sales.id')
             ->where('sales.client_id', $id)
-            ->limit(30)->get();
+            ->limit(30)
+        ->get()->toArray();
 
-        // $payments = DB::table('payment_sales')
-        //     // ->where(function ($query) use ($ShowRecord) {
-        //     //     if (!$ShowRecord) {
-        //     //         return $query->where('payment_sales.user_id', '=', $current_user);
-        //     //     }
-        //     // })
-        //     ->where('payment_sales.deleted_at', '=', null)
-        //     ->join('sales', 'payment_sales.sale_id', '=', 'sales.id')
-        //     ->where('sales.client_id', $id)
-        //     ->select(
-        //         'payment_sales.date', 'payment_sales.Ref AS Ref', 'sales.Ref AS Sale_Ref',
-        //         'payment_sales.Reglement', 'payment_sales.montant'
-        //     )
-        //     ->limit(30)->get();
+        /////-----  list of Return
+        $returns = SaleReturn::
+            where('deleted_at', '=', null)
+            ->where('client_id', $id)
+            ->select(
+                'id',
+                'Ref',
+                'date',
+                'GrandTotal',
+                'user_id',
+                'notes',
+                'statut',
+                'created_at'
+            )
+            ->limit(30)
+        ->get()->toArray();
 
         return response()->json([
             'status' => true,
             'client' => $client,
             'data_sales' => $sales,
             'data_payments' => $payments,
+            'data_returns' => $returns,
         ]);
     }
 
@@ -380,6 +330,9 @@ class ClientController extends BaseController
             'tax_number' => $request['tax_number'],
             'id_user' => $request['user_id'],
             'localisation' => $request['localisation'],
+            'zone' => $request['zone'],
+            'strict_credit' => $request['strict_credit'] ?? 0,
+            'max_credit' => $request['max_credit'],
         ]);
         return response()->json(['success' => true]);
     }
@@ -419,10 +372,7 @@ class ClientController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'update', Client::class);
 
-        $this->validate($request, [
-            'name' => 'required',
-            ]
-        );
+        $this->validate($request, ['name' => 'required',]);
 
         Client::whereId($id)->update([
             'name' => $request['name'],
@@ -432,7 +382,10 @@ class ClientController extends BaseController
             'country' => $request['country'],
             'city' => $request['city'],
             'tax_number' => $request['tax_number'],
-            'id_user' => $request['user_id']
+            'id_user' => $request['user_id'],
+            'zone' => $request['zone'],
+            'strict_credit' => $request['strict_credit'],
+            'max_credit' => $request['max_credit'],
         ]);
 
         return response()->json(['success' => true]);
@@ -442,10 +395,7 @@ class ClientController extends BaseController
     {
         $this->authorizeForUser($request->user('api'), 'update', Client::class);
 
-        $this->validate($request, [
-            'name' => 'required',
-            ]
-        );
+        $this->validate($request, ['name' => 'required',]);
 
         // Get all request data except for the _method and _token
         $requestData = $request->except(['_method', '_token']);
@@ -667,6 +617,8 @@ class ClientController extends BaseController
                 $payment_status = 'partial';
             }
 
+            $current_user = Auth::user();
+
             $payment_sale = new PaymentSale();
             $payment_sale->sale_id = $client_sale->id;
             $payment_sale->Ref = $generated_ref;
@@ -675,8 +627,9 @@ class ClientController extends BaseController
             $payment_sale->montant = $amount;
             $payment_sale->change = 0;
             $payment_sale->notes = $request['notes'];
-            $payment_sale->user_id = Auth::user()->id;
-            $payment_sale->payment_received = 0;
+            $payment_sale->user_id = $current_user->id;
+            $payment_sale->payment_received = ($current_user->id === 1) ? null : 0;
+            $payment_sale->client_id = $request->client_id;
 
             $payment_sale->save();
 

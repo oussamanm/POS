@@ -9,7 +9,7 @@
           <i class="i-Billing"></i>
           {{$t('print')}}
         </button>
-      </b-card-header> 
+      </b-card-header>
       <b-card-body>
         <b-row id="print_product">
           <b-col md="12" class="mb-5 d-none" v-if="product.type != 'is_variant'">
@@ -53,6 +53,14 @@
                   <td>{{$t('Price')}}</td>
                   <th>{{currentUser.currency}} {{formatNumber(product.price ,2)}}</th>
                 </tr>
+                <tr v-if="product.type != 'is_variant'">
+                  <td>Prix Min de vente</td>
+                  <th>{{currentUser.currency}} {{formatNumber(product.min_price ,2)}}</th>
+                </tr>
+                <tr v-if="product.type != 'is_variant'">
+                  <td>Prix de Gros</td>
+                  <th>{{currentUser.currency}} {{formatNumber(product.wholesale_price ,2)}}</th>
+                </tr>
                 <tr v-if="product.type != 'is_service'">
                   <td>{{$t('Unit')}}</td>
                   <th>{{product.unit}}</th>
@@ -65,7 +73,7 @@
                   <td>{{$t('TaxMethod')}}</td>
                   <th>{{product.tax_method}}</th>
                 </tr>
-                <tr v-if="product.type != 'is_service'"> 
+                <tr v-if="product.type != 'is_service'">
                   <td>{{$t('StockAlert')}}</td>
                   <th>
                     <span
@@ -73,7 +81,7 @@
                     >{{formatNumber(product.stock_alert ,2)}}</span>
                   </th>
                 </tr>
-              
+
               </tbody>
             </table>
           </b-col>
@@ -198,7 +206,7 @@ export default {
   },
 
   methods: {
-   
+
 
     //------------------------------Formetted Numbers -------------------------\\
     formatNumber(number, dec) {

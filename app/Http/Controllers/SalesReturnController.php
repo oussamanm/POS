@@ -353,6 +353,7 @@ class SalesReturnController extends BaseController
             // add new record in Sale Payment with - amount
             PaymentSale::create([
                 'sale_id'   => null,
+                'client_id' => $request->client_id,
                 'Ref'       => null,
                 'date'      => Carbon::now(),
                 'Reglement' => "RETURN",
@@ -423,7 +424,8 @@ class SalesReturnController extends BaseController
             {
                 PaymentSale::create([
                     'sale_id'   => null,
-                    'Ref'       => null,
+                    'client_id' => $sale_return->client_id,
+                    'Ref'       => $sale_return->Ref,
                     'date'      => Carbon::now(),
                     'Reglement' => "RETURN",
                     'montant'   => $sale_return->GrandTotal,

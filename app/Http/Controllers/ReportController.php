@@ -49,6 +49,7 @@ class ReportController extends BaseController
     {
 
         $selected_warehouse = (empty($id_warehouse) || is_null($id_warehouse)) ? 1 : $id_warehouse;
+        $current_user = Auth::user();
 
         $nbr_today_sales = 0;
         $total_today_sales = 0;
@@ -64,6 +65,9 @@ class ReportController extends BaseController
         $restult_nbr = Sale::where('date', $todaysDate)
             ->where('deleted_at', '=', null)
             ->where('warehouse_id', $selected_warehouse)
+            ->when($current_user->role_id === 4, function ($query) use ($current_user) {
+                return $query->where('user_id', $current_user->id);
+            })
             ->count();
 
         if (!(is_null($restult_nbr) || empty($restult_nbr)))
@@ -74,6 +78,9 @@ class ReportController extends BaseController
         $restult_today_sales = Sale::where('date', $todaysDate)
             ->where('deleted_at', '=', null)
             ->where('warehouse_id', $selected_warehouse)
+            ->when($current_user->role_id === 4, function ($query) use ($current_user) {
+                return $query->where('user_id', $current_user->id);
+            })
             ->sum('GrandTotal');
 
         if (!(is_null($restult_today_sales) || empty($restult_today_sales)))
@@ -82,7 +89,11 @@ class ReportController extends BaseController
         /// Get sales Month
         $restult_month_sales = Sale::whereBetween('date', [$startOfMonth, $endOfMonth])
             ->where('deleted_at', '=', null)
-            ->where('warehouse_id', $selected_warehouse)->sum('GrandTotal');
+            ->where('warehouse_id', $selected_warehouse)
+            ->when($current_user->role_id === 4, function ($query) use ($current_user) {
+                return $query->where('user_id', $current_user->id);
+            })
+            ->sum('GrandTotal');
 
         if (!(is_null($restult_month_sales) || empty($restult_month_sales)))
             $total_month_sales = $restult_month_sales;
@@ -94,10 +105,17 @@ class ReportController extends BaseController
             ->first();
 
         if (!(is_null($credit_data) || empty($credit_data)))
-            $total_credit_clients = $credit_data->total_sale -  $credit_data->total_paid;
+        {
+            // get records returned
+            $total_returns = SaleReturn::where('deleted_at', '=', null)
+                ->where('warehouse_id', $selected_warehouse)
+                ->where('payment_statut', '=', 'paid')
+                ->sum('GrandTotal');
+
+            $total_credit_clients = $credit_data->total_sale -  $credit_data->total_paid - $total_returns;
+        }
 
         // Get Payments
-        $current_user = Auth::user();
         if ($current_user->role_id === 2)
         {
             $payment_data = PaymentSale::where('deleted_at', '=', null)->where('payment_received', '=', 0)->where('user_id', $current_user->id)->sum('montant');
@@ -105,8 +123,6 @@ class ReportController extends BaseController
             if (!(is_null($payment_data) || empty($payment_data)))
                 $total_payment_onHand = $payment_data;
         }
-
-
 
         $data = [
             'nbr_today_sales' => $nbr_today_sales,
@@ -161,7 +177,6 @@ class ReportController extends BaseController
 
     public function Client_Report(request $request)
     {
-
         $this->authorizeForUser($request->user('api'), 'Reports_customers', Client::class);
 
         // How many items do you want to display.
@@ -173,7 +188,7 @@ class ReportController extends BaseController
         $dir = $request->SortType;
         $data = array();
 
-        $clients = Client::where('deleted_at', '=', null)
+        $clients = Client::whereNull('deleted_at')
         // Search With Multiple Param
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
@@ -184,43 +199,25 @@ class ReportController extends BaseController
             });
 
         $totalRows = $clients->count();
-        if($perPage == "-1"){
+        if($perPage == "-1")
             $perPage = $totalRows;
-        }
+
         $clients = $clients->offset($offSet)
             ->limit($perPage)
             ->orderBy($order, $dir)
             ->get();
 
-        foreach ($clients as $client) {
-            $item['total_sales'] = DB::table('sales')
-                ->where('deleted_at', '=', null)
-                ->where('client_id', $client->id)
-                ->count();
+        foreach ($clients as $client)
+        {
+            $sales = Sale::whereNull('deleted_at')->where('client_id', $client->id)->get();
 
-            $item['total_amount'] = DB::table('sales')
-                ->where('deleted_at', '=', null)
-                ->where('client_id', $client->id)
-                ->sum('GrandTotal');
+            $item['total_sales'] = $sales->count();
+            $item['total_amount'] = $sales->sum('GrandTotal');
+            $item['total_payments'] = PaymentSale::whereNull('deleted_at')->where('client_id', $client->id)->where('sale_id', '!=', null)->sum('montant') ?? 0;
+            // $item['total_return'] = SaleReturn::whereNull('deleted_at')->where('client_id', $client->id)->sum('GrandTotal') ?? 0;
+            $item['total_return'] = PaymentSale::whereNull('deleted_at')->where('client_id', $client->id)->whereNull('sale_id')->sum('montant') ?? 0;
 
-            $item['total_paid'] = DB::table('sales')
-                ->where('sales.deleted_at', '=', null)
-                ->where('sales.client_id', $client->id)
-                ->sum('paid_amount');
-
-            $item['due'] = $item['total_amount'] - $item['total_paid'];
-
-            $item['total_amount_return'] = DB::table('sale_returns')
-                ->where('deleted_at', '=', null)
-                ->where('client_id', $client->id)
-                ->sum('GrandTotal');
-
-            $item['total_paid_return'] = DB::table('sale_returns')
-                ->where('sale_returns.deleted_at', '=', null)
-                ->where('sale_returns.client_id', $client->id)
-                ->sum('paid_amount');
-
-            $item['return_Due'] = $item['total_amount_return'] - $item['total_paid_return'];
+            $item['due'] = $item['total_amount'] - $item['total_payments'] - $item['total_return'];
 
             $item['name'] = $client->name;
             $item['phone'] = $client->phone;
@@ -234,29 +231,24 @@ class ReportController extends BaseController
             'report' => $data,
             'totalRows' => $totalRows,
         ]);
-
     }
 
     //----------------- Customers Report By ID-----------------------\\
 
     public function Client_Report_detail(request $request, $id)
     {
-
         $this->authorizeForUser($request->user('api'), 'Reports_customers', Client::class);
 
         $client = Client::where('deleted_at', '=', null)->findOrFail($id);
 
-        $data['total_sales'] = DB::table('sales')->where('deleted_at', '=', null)->where('client_id', $id)->count();
+        $sales = Sale::where('deleted_at', '=', null)->where('client_id', $id)->get();
 
-        $data['total_amount'] = DB::table('sales')->where('deleted_at', '=', null)->where('client_id', $id)
-            ->sum('GrandTotal');
+        $data['total_sales'] = $sales->count();
+        $data['total_amount'] = $sales->sum('GrandTotal');
+        $data['total_payments'] = PaymentSale::where('deleted_at', '=', null)->where('client_id', $id)->where('sale_id', '!=', null)->sum('montant') ?? 0;
+        $data['total_return'] = SaleReturn::where('deleted_at', '=', null)->where('client_id', $id)->sum('GrandTotal') ?? 0;
 
-        $data['total_paid'] = DB::table('sales')
-            ->where('sales.deleted_at', '=', null)
-            ->where('sales.client_id', $client->id)
-            ->sum('paid_amount');
-
-        $data['due'] = $data['total_amount'] - $data['total_paid'];
+        $data['due'] = $data['total_amount'] - $data['total_payments'] - $data['total_return'];
 
         return response()->json(['report' => $data]);
     }
@@ -290,7 +282,6 @@ class ReportController extends BaseController
 
     public function Sales_Client(request $request)
     {
-
         $this->authorizeForUser($request->user('api'), 'Reports_customers', Client::class);
 
         // How many items do you want to display.
@@ -502,16 +493,14 @@ class ReportController extends BaseController
         $SaleReturn = SaleReturn::where('deleted_at', '=', null)->with('sale','client','warehouse')
             ->where('client_id', $request->id)
             ->where(function ($query) use ($ShowRecord) {
-                if (!$ShowRecord) {
+                if (!$ShowRecord)
                     return $query->where('user_id', '=', Auth::user()->id);
-                }
             })
              // Search With Multiple Param
              ->where(function ($query) use ($request) {
                 return $query->when($request->filled('search'), function ($query) use ($request) {
                     return $query->where('Ref', 'LIKE', "%{$request->search}%")
                         ->orWhere('statut', 'LIKE', "%{$request->search}%")
-                        ->orWhere('payment_statut', 'like', "$request->search")
                         ->orWhere(function ($query) use ($request) {
                             return $query->whereHas('client', function ($q) use ($request) {
                                 $q->where('name', 'LIKE', "%{$request->search}%");
@@ -531,15 +520,16 @@ class ReportController extends BaseController
             });
 
         $totalRows = $SaleReturn->count();
-        if($perPage == "-1"){
+        if($perPage == "-1")
             $perPage = $totalRows;
-        }
+
         $SaleReturn = $SaleReturn->offset($offSet)
             ->limit($perPage)
             ->orderBy('id', 'desc')
             ->get();
 
-        foreach ($SaleReturn as $Sale_Return) {
+        foreach ($SaleReturn as $Sale_Return)
+        {
             $item['id'] = $Sale_Return->id;
             $item['Ref'] = $Sale_Return->Ref;
             $item['statut'] = $Sale_Return->statut;
@@ -1105,7 +1095,6 @@ class ReportController extends BaseController
 
     public function Warehouse_Report(request $request)
     {
-
         $this->authorizeForUser($request->user('api'), 'WarehouseStock', Product::class);
 
         if ($request->warehouse_id == null && isset($_GET['vendor']) && $_GET['vendor'] == 1)
@@ -1129,21 +1118,6 @@ class ReportController extends BaseController
         $tmp_sum_sales = $data_sales->sum('GrandTotal');
         $data['totalSales'] = number_format($tmp_sum_sales, 2, '.', ',');
 
-        // Get Purchases
-        // $data['purchases'] = Purchase::where('deleted_at', '=', null)
-        //     ->where(function ($query) use ($request) {
-        //         return $query->when($request->filled('warehouse_id'), function ($query) use ($request) {
-        //             return $query->where('warehouse_id', $request->warehouse_id);
-        //         });
-        //     })->count();
-
-        // $data['ReturnPurchase'] = PurchaseReturn::where('deleted_at', '=', null)
-        //     ->where(function ($query) use ($request) {
-        //         return $query->when($request->filled('warehouse_id'), function ($query) use ($request) {
-        //             return $query->where('warehouse_id', $request->warehouse_id);
-        //         });
-        //     })->count();
-
         // Get Sales Return
         $data_sales_return = SaleReturn::where('deleted_at', '=', null)
             ->where(function ($query) use ($request) {
@@ -1166,13 +1140,13 @@ class ReportController extends BaseController
         //get warehouses assigned to user
         $user_auth = auth()->user();
         if($user_auth->is_all_warehouses){
-            $warehouses = Warehouse::where('deleted_at', '=', null);
+            $warehouses = Warehouse::where('active', 1)->where('deleted_at', '=', null);
             if (isset($_GET['vendor']) && $_GET['vendor'] == 1)
                 $warehouses = $warehouses->where('id', '<>', 1);
             $warehouses = $warehouses->get(['id', 'name']);
         }else{
             $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-            $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id);
+            $warehouses = Warehouse::where('active', 1)->where('deleted_at', '=', null)->whereIn('id', $warehouses_id);
             if (isset($_GET['vendor']) && $_GET['vendor'] == 1)
                 $warehouses = $warehouses->where('id', '<>', 1);
             $warehouses = $warehouses->get(['id', 'name']);
@@ -1182,7 +1156,52 @@ class ReportController extends BaseController
             'data' => $data,
             'warehouses' => $warehouses,
         ], 200);
+    }
 
+    public function Pre_Vendeur_Report(request $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'WarehouseStock', Product::class);
+
+        $preVendeurs = User::
+            whereHas('roles', function ($q) {
+                $q->where('name', 'Pre-Vendeur');
+            })
+            ->get(['id', 'username']);
+
+        // check if request has preVendeur_id selected or not
+        if ($request->filled('preVendeur_id') && $request->preVendeur_id != "")
+            $preVendeur_id = $request->preVendeur_id;
+        else if ($preVendeurs->count() > 0)
+            $preVendeur_id = $preVendeurs->first()->id;
+        else
+            $preVendeur_id = null;
+
+        $data = [
+            'sales' => 0,
+            'totalSales' => 0,
+        ];
+
+        // Get Sales
+        $data_sales = collect();
+
+        if ($preVendeur_id)
+        {
+            $data_sales = Sale::whereNull('deleted_at')
+                ->when($request->filled('from'), function ($query) use ($request){
+                        return $query->whereBetween('date', array($request->from, $request->to));
+                })
+                ->where('user_id', $preVendeur_id)
+                ->get();
+
+            $tmp_sum_sales = $data_sales->sum('GrandTotal') ?? 0;
+            $data['sales'] = $data_sales->count() ?? 0;
+            $data['totalSales'] = number_format($tmp_sum_sales, 2, '.', ',') ?? 0;
+        }
+
+        return response()->json([
+            'data' => $data,
+            'preVendeurs' => $preVendeurs,
+        ], 200);
     }
 
     //-------------------- Get Sales By Warehouse -------------\\
@@ -1201,7 +1220,8 @@ class ReportController extends BaseController
         $Role = Auth::user()->roles()->first();
         $ShowRecord = Role::findOrFail($Role->id)->inRole('record_view');
 
-        $sales = Sale::where('deleted_at', '=', null)->with('client','warehouse')
+        $sales = Sale::whereNull('deleted_at')
+            ->with('client','warehouse')
             ->where(function ($query) use ($ShowRecord) {
                 if (!$ShowRecord)
                     return $query->where('user_id', '=', Auth::user()->id);
@@ -1262,6 +1282,83 @@ class ReportController extends BaseController
 
     }
 
+    //-------------------- Get Sales By User -------------\\
+
+    public function Sales_User(request $request)
+    {
+
+        $this->authorizeForUser($request->user('api'), 'WarehouseStock', Product::class);
+        // How many items do you want to display.
+        $perPage = $request->limit;
+        $pageStart = \Request::get('page', 1);
+        // Start displaying items from this number;
+        $offSet = ($pageStart * $perPage) - $perPage;
+        $data = [];
+
+        $selected_user = $request->user_id;
+
+        if ($selected_user == null)
+            return response()->json([
+                'totalRows' => 0,
+                'sales' => [],
+            ]);
+
+        $sales = Sale::whereNull('deleted_at')
+            ->with('client','warehouse')
+            ->where('user_id', $selected_user)
+            ->where(function ($query) use ($request) {
+                    return $query->when($request->filled('from'), function ($query) use ($request) {
+                        return $query->whereBetween('date', array($request->from, $request->to));
+                });
+            })
+            ->where(function ($query) use ($request) {
+                return $query->when($request->filled('search'), function ($query) use ($request) {
+                    return $query->where('Ref', 'LIKE', "%{$request->search}%")
+                        ->orWhere('statut', 'LIKE', "%{$request->search}%")
+                        ->orWhere('GrandTotal', $request->search)
+                        ->orWhere('payment_statut', 'like', "$request->search")
+                        ->orWhere(function ($query) use ($request) {
+                            return $query->whereHas('client', function ($q) use ($request) {
+                                $q->where('name', 'LIKE', "%{$request->search}%");
+                            });
+                        });
+                });
+            });
+
+        $totalRows = $sales->count();
+        if($perPage == "-1")
+            $perPage = $totalRows;
+
+        $sales = $sales->offset($offSet)
+            ->limit($perPage)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $data = [];
+        foreach ($sales as $sale)
+        {
+            $item['id'] = $sale->id;
+            $item['date'] = $sale->date;
+            $item['Ref'] = $sale->Ref;
+            $item['client_name'] = $sale['client']->name;
+            $item['warehouse_name'] = $sale['warehouse']->name;
+            $item['statut'] = $sale->statut;
+            $item['GrandTotal'] = $sale->GrandTotal;
+            $item['paid_amount'] = $sale->paid_amount;
+            $item['due'] = $sale->GrandTotal - $sale->paid_amount;
+            $item['payment_status'] = $sale->payment_statut;
+            $item['shipping_status'] = $sale->shipping_status;
+
+            $data[] = $item;
+        }
+
+        return response()->json([
+            'totalRows' => $totalRows,
+            'sales' => $data,
+        ]);
+
+    }
+
     //-------------------- Get Quotations By Warehouse -------------\\
 
     public function Quotations_Warehouse(request $request)
@@ -1281,9 +1378,8 @@ class ReportController extends BaseController
         $Quotations = Quotation::where('deleted_at', '=', null)
             ->with('client','warehouse')
             ->where(function ($query) use ($ShowRecord) {
-                if (!$ShowRecord) {
+                if (!$ShowRecord)
                     return $query->where('user_id', '=', Auth::user()->id);
-                }
             })
             ->where(function ($query) use ($request) {
                 return $query->when($request->filled('warehouse_id'), function ($query) use ($request) {
@@ -1389,6 +1485,84 @@ class ReportController extends BaseController
         if($perPage == "-1"){
             $perPage = $totalRows;
         }
+        $SaleReturn = $SaleReturn->offset($offSet)
+            ->limit($perPage)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        foreach ($SaleReturn as $Sale_Return) {
+            $item['id'] = $Sale_Return->id;
+            $item['warehouse_name'] = $Sale_Return['warehouse']->name;
+            $item['Ref'] = $Sale_Return->Ref;
+            $item['statut'] = $Sale_Return->statut;
+            $item['client_name'] = $Sale_Return['client']->name;
+            $item['sale_ref'] = $Sale_Return['sale']?$Sale_Return['sale']->Ref:'---';
+            $item['sale_id'] = $Sale_Return['sale']?$Sale_Return['sale']->id:NULL;
+            $item['GrandTotal'] = $Sale_Return->GrandTotal;
+            $item['paid_amount'] = $Sale_Return->paid_amount;
+            $item['due'] = $Sale_Return->GrandTotal - $Sale_Return->paid_amount;
+            $item['payment_status'] = $Sale_Return->payment_statut;
+
+            $data[] = $item;
+        }
+
+        return response()->json([
+            'totalRows' => $totalRows,
+            'returns_sale' => $data,
+        ]);
+    }
+
+    public function Returns_Sale_User(request $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'WarehouseStock', Product::class);
+        // How many items do you want to display.
+        $perPage = $request->limit;
+        $pageStart = \Request::get('page', 1);
+        // Start displaying items from this number;
+        $offSet = ($pageStart * $perPage) - $perPage;
+        $data = array();
+
+        $selected_user = $request->user_id;
+
+        if ($selected_user == null)
+            return response()->json([
+                'totalRows' => 0,
+                'returns_sale' => [],
+            ]);
+
+        $SaleReturn = SaleReturn::where('deleted_at', '=', null)
+            ->with('sale','client','warehouse')
+            ->where('user_id', $selected_user)
+            ->where(function ($query) use ($request) {
+                    return $query->when($request->filled('from'), function ($query) use ($request) {
+                        return $query->whereBetween('date', array($request->from, $request->to));
+                });
+            })
+            //Search With Multiple Param
+            ->where(function ($query) use ($request) {
+                return $query->when($request->filled('search'), function ($query) use ($request) {
+                    return $query->where('Ref', 'LIKE', "%{$request->search}%")
+                        ->orWhere('statut', 'LIKE', "%{$request->search}%")
+                        ->orWhere('GrandTotal', $request->search)
+                        ->orWhere('payment_statut', 'like', "$request->search")
+
+                        ->orWhere(function ($query) use ($request) {
+                            return $query->whereHas('sale', function ($q) use ($request) {
+                                $q->where('Ref', 'LIKE', "%{$request->search}%");
+                            });
+                        })
+                        ->orWhere(function ($query) use ($request) {
+                            return $query->whereHas('client', function ($q) use ($request) {
+                                $q->where('name', 'LIKE', "%{$request->search}%");
+                            });
+                        });
+                });
+            });
+
+        $totalRows = $SaleReturn->count();
+        if($perPage == "-1")
+            $perPage = $totalRows;
+
         $SaleReturn = $SaleReturn->offset($offSet)
             ->limit($perPage)
             ->orderBy('id', 'desc')
@@ -3662,12 +3836,15 @@ class ReportController extends BaseController
         $data = array();
         //get warehouses assigned to user
         $user_auth = auth()->user();
-        if($user_auth->is_all_warehouses){
-            $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+        if($user_auth->is_all_warehouses)
+        {
+            $warehouses = Warehouse::where('active', 1)->where('deleted_at', '=', null)->get(['id', 'name']);
             $warehouses_id = Warehouse::where('deleted_at', '=', null)->pluck('id')->toArray();
-        }else{
+        }
+        else
+        {
             $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-            $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
+            $warehouses = Warehouse::where('active', 1)->where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
         }
 
         $products_data = Product::where('deleted_at', '=', null)
@@ -3686,9 +3863,9 @@ class ReportController extends BaseController
         });
 
         $totalRows = $products_data->count();
-        if($perPage == "-1"){
+        if($perPage == "-1")
             $perPage = $totalRows;
-        }
+
         $products = $products_data->offset($offSet)
             ->limit($perPage)
             ->orderBy($order, $dir)
@@ -3698,32 +3875,32 @@ class ReportController extends BaseController
 
         foreach ($products as $product) {
 
-            if($product->type != 'is_service'){
-
+            if($product->type != 'is_service')
+            {
                 $item['id'] = $product->id;
                 $item['code'] = $product->code;
                 $item['name'] = $product->name;
-                // $item['category'] = $product['category']->name;
+                $item['category'] = $product['category']->name;
 
                 $current_stock = product_warehouse::
-                where('product_id', $product->id)
-                ->where('deleted_at', '=', null)
-                ->whereIn('warehouse_id', $warehouses_id)
-                ->where(function ($query) use ($request) {
-                    return $query->when($request->filled('warehouse_id'), function ($query) use ($request) {
-                            return $query->where('warehouse_id', $request->warehouse_id);
-                        });
-                    })
-                ->sum('qte');
+                    where('product_id', $product->id)
+                    ->where('deleted_at', '=', null)
+                    ->whereIn('warehouse_id', $warehouses_id)
+                    ->where(function ($query) use ($request) {
+                        return $query->when($request->filled('warehouse_id'), function ($query) use ($request) {
+                                return $query->where('warehouse_id', $request->warehouse_id);
+                            });
+                        })
+                    ->sum('qte');
 
-                if (isset($_GET['vendor']) && $_GET['vendor'] == 1 && $current_stock == 0){
+                if (isset($_GET['vendor']) && $_GET['vendor'] == 1 && $current_stock == 0)
+                {
                     $zeroQty += 1;
                     continue;
                 }
 
                 $item['quantity'] = $current_stock;
                 $item['stock_value'] = round($current_stock * $product->cost, 2);;
-
 
                 $data[] = $item;
 
@@ -3732,7 +3909,7 @@ class ReportController extends BaseController
                 $item['id'] = $product->id;
                 $item['code'] = $product->code;
                 $item['name'] = $product->name;
-                // $item['category'] = $product['category']->name;
+                $item['category'] = $product['category']->name;
                 $item['quantity'] = '---';
 
                 $data[] = $item;
@@ -4444,17 +4621,16 @@ class ReportController extends BaseController
 
     public function download_report_client_pdf(Request $request, $id)
     {
-
         $this->authorizeForUser($request->user('api'), 'Reports_customers', Client::class);
 
         $helpers = new helpers();
-        $client = Client::where('deleted_at', '=', null)->findOrFail($id);
+        $client = Client::whereNull('deleted_at')->findOrFail($id);
 
-        $Sales = Sale::where('deleted_at', '=', null)
-        ->where([
-            ['payment_statut', '!=', 'paid'],
-            ['client_id', $id]
-        ])->get();
+        $Sales = Sale::whereNull('deleted_at')
+            ->where([
+                ['payment_statut', '!=', 'paid'],
+                ['client_id', $id]
+            ])->get();
 
         $sales_details = [];
 
@@ -4608,35 +4784,34 @@ class ReportController extends BaseController
             $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $array_warehouses_id)->get(['id', 'name']);
         }
 
-
-        $products_data = Product::where('deleted_at', '=', null)->select('id', 'name','code', 'is_variant','unit_id','type')
-
-        ->where(function ($query) use ($request) {
-            return $query->when($request->filled('search'), function ($query) use ($request) {
-                return $query->where('name','LIKE', "%{$request->search}%")
-                    ->orWhere('code', 'LIKE', "%{$request->search}%");
-                });
-        });
+        $products_data = Product::where('deleted_at', '=', null)
+            ->with('category')
+            ->select('id', 'name','code', 'is_variant','unit_id','type', 'category_id')
+            ->where(function ($query) use ($request) {
+                return $query->when($request->filled('search'), function ($query) use ($request) {
+                    return $query->where('name','LIKE', "%{$request->search}%")
+                        ->orWhere('code', 'LIKE', "%{$request->search}%");
+                    });
+            });
 
         $totalRows = $products_data->count();
-        if($perPage == "-1"){
+        if($perPage == "-1")
             $perPage = $totalRows;
-        }
-
 
         $products = $products_data->offset($offSet)
-        ->limit($perPage)
-        ->get();
-
+            ->limit($perPage)
+            ->get();
 
         $product_details = [];
         $total_sales = 0;
         foreach ($products as $product) {
 
-            if($product->type != 'is_service'){
+            if($product->type != 'is_service')
+            {
                 $nestedData['id'] = $product->id;
                 $nestedData['name'] = $product->name;
                 $nestedData['code'] = $product->code;
+                $nestedData['category'] = $product->category->name;
 
                 $nestedData['sold_amount'] = SaleDetail::with('sale')->where('product_id', $product->id)
                 ->where(function ($query) use ($view_records) {
@@ -4644,7 +4819,6 @@ class ReportController extends BaseController
                         return $query->whereHas('sale', function ($q) use ($request) {
                             $q->where('user_id', '=', Auth::user()->id);
                         });
-
                     }
                 })
                 ->where(function ($query) use ($request, $array_warehouses_id) {
@@ -4656,7 +4830,6 @@ class ReportController extends BaseController
                         return $query->whereHas('sale', function ($q) use ($request, $array_warehouses_id) {
                             $q->whereIn('warehouse_id', $array_warehouses_id);
                         });
-
                     }
                 })
                 ->whereBetween('date', array($request->from, $request->to))
@@ -4764,9 +4937,6 @@ class ReportController extends BaseController
                 $product_details[] = $nestedData;
             }
         }
-
-
-
 
         return response()->json([
             'products' => $product_details,
@@ -5251,7 +5421,25 @@ class ReportController extends BaseController
             'suppliers' => $suppliers,
             'warehouses' => $warehouses,
         ]);
+    }
 
+
+    // -------------------- api correct data : fill client_id in table payment_sales using sale_id -------------------\\
+
+    public function correct_data_sales_payments()
+    {
+        $payments = PaymentSale::where('deleted_at', '=', null)->whereNull('client_id')->get();
+
+        foreach ($payments as $payment)
+        {
+            $sale = $payment->sale;
+
+            if($sale)
+            {
+                $payment->client_id = $sale->client_id;
+                $payment->save();
+            }
+        }
     }
 
 }

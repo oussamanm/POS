@@ -436,6 +436,12 @@
                             <span class="item-name">{{ $t('ListSales') }}</span>
                         </router-link>
                     </li>
+                    <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('Reports_payments_Sales')">
+                        <router-link tag="a" class to="/app/reports/payments_sale">
+                            <i class="nav-icon i-ID-Card"></i>
+                            <span class="item-name">List Paiements</span>
+                        </router-link>
+                    </li>
                     <li class="nav-item" v-if="currentUserPermissions && currentUserPermissions.includes('Pos_view')">
                         <router-link tag="a" class to="/app/pos">
                             <i class="nav-icon i-Files"></i>
@@ -711,7 +717,13 @@
                     <li class="nav-item">
                         <router-link tag="a" class to="/app/reports/Vendor_report">
                             <i class="nav-icon i-Pie-Chart"></i>
-                            <span class="item-name">Rapport des vendeurs</span>
+                            <span class="item-name">Rapport Vendeurs</span>
+                        </router-link>
+                    </li>
+                    <li class="nav-item">
+                        <router-link tag="a" class to="/app/reports/pre_vendor_report">
+                            <i class="nav-icon i-Pie-Chart"></i>
+                            <span class="item-name">Rapport Pre-Vendeurs</span>
                         </router-link>
                     </li>
                     <li class="nav-item"
