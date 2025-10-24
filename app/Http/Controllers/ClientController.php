@@ -38,7 +38,7 @@ class ClientController extends BaseController
         $columns = array(0 => 'name', 1 => 'code', 2 => 'phone', 3 => 'email');
         $param = array(0 => 'like', 1 => 'like', 2 => 'like', 3 => 'like');
         $data = array();
-        $clients = Client::with("user")->where('deleted_at', '=', null);
+        $clients = Client::with("user")->whereNull('deleted_at');
 
         //Multiple Filter
         $Filtred = $helpers->filter($clients, $columns, $param, $request)
@@ -73,6 +73,8 @@ class ClientController extends BaseController
             $item['total_return'] = PaymentSale::whereNull('deleted_at')->where('client_id', $client->id)->whereNull('sale_id')->sum('montant') ?? 0;
 
             $item['due'] = $item['total_sales'] - $item['total_payments'] - $item['total_return'];
+            $item['due'] = round($item['due'], 2);
+
 
             $item['id'] = $client->id;
             $item['name'] = $client->name;
@@ -567,6 +569,7 @@ class ClientController extends BaseController
                 $payment_sale->change = 0;
                 $payment_sale->notes = $request['notes'];
                 $payment_sale->user_id = Auth::user()->id;
+                $payment_sale->client_id = $client_sale->client_id;
                 $payment_sale->save();
 
                 $client_sale->paid_amount += $amount;
@@ -629,7 +632,7 @@ class ClientController extends BaseController
             $payment_sale->notes = $request['notes'];
             $payment_sale->user_id = $current_user->id;
             $payment_sale->payment_received = ($current_user->id === 1) ? null : 0;
-            $payment_sale->client_id = $request->client_id;
+            $payment_sale->client_id = $client_sale->client_id;
 
             $payment_sale->save();
 

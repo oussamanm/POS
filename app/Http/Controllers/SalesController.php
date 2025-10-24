@@ -643,6 +643,7 @@ class SalesController extends BaseController
                                 'change' => $request['change'],
                                 'notes' => NULL,
                                 'user_id' => Auth::user()->id,
+                                'client_id' => $request->client_id,
                             ]);
 
                             $sale->update([
@@ -650,7 +651,6 @@ class SalesController extends BaseController
                                 'payment_statut' => $payment_statut,
                             ]);
                         }
-
                     }
                 } catch (Exception $e) {
                     return response()->json(['message' => $e->getMessage()], 500);
